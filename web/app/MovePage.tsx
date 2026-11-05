@@ -189,7 +189,7 @@ export function MovePage() {
                   old account is empty.
                 </>
               ) : (
-                "Creates the Lifeboat account, then moves every asset in a single sponsored frame transaction. All of it lands, or none of it does."
+                "One sponsored frame transaction creates your Lifeboat account and moves every asset into it. All of it lands, or none of it does. You pay nothing, not even for the new account."
               )}
             </Step>
           </ol>

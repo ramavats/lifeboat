@@ -68,7 +68,8 @@ export function HowPage() {
 
         <Section n="04" title="Why it needs the alt mempool">
           <p className="t2">
-            The account fits the public mempool's 100,000-gas validation budget. The migration sponsor does not fit its rules.
+            The account fits the public mempool's 100,000-gas validation budget: its transactions were mined through it.
+            The migration sponsor does not fit its rules.
             To pay for a stranger's migration safely, it checks during validation that every asset goes into a genuine Lifeboat
             account, which means reading the factory's registry. Reading another contract's storage is allowed only for a
             staked entity, in the ERC-8421 alt mempool. The same signed migration, sent both ways:
@@ -110,8 +111,8 @@ export function HowPage() {
         <Section n="07" title="Limits">
           <p className="t2" style={{ marginBottom: 0 }}>
             Unaudited, experimental cryptography, on a devnet that can be reset. XMSS is stateful: losing the journal and
-            signing a different transaction with a used key weakens that key. Creating the account isn't sponsored yet. The Tor
-            check relies on a demo gateway.{" "}
+            signing a different transaction with a used key weakens that key. Creating an account costs the sponsor about
+            7.7M state gas on this devnet. The Tor check relies on a demo gateway.{" "}
             <a href="https://github.com/ramavats/lifeboat">The code, tests and transaction log are on GitHub.</a>
           </p>
         </Section>

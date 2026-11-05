@@ -11,7 +11,8 @@ such path exists yet. Lifeboat is that path:
 
 1. **Check** any mainnet address for exposure, with every read routed through Anon-RPC.
 2. **Migrate** an exposed account into a quantum-safe Lifeboat account with **one sponsored
-   transaction**. All ETH and tokens move atomically, and the user pays no gas.
+   transaction** that also creates the account. All ETH and tokens move atomically, and the
+   user pays nothing: a wallet holding only tokens, with no ETH for gas, can still move.
 3. **Live in hybrid mode** (ECDSA *and* a hash-based signature), then **switch to
    quantum-safe only** when ECDSA can no longer be trusted.
 
@@ -21,6 +22,7 @@ Everything below ran on the public ERC-8421 alt-mempool devnet (chain 1337) on N
 
 | Step | Transaction | Result |
 |---|---|---|
+| **Fully sponsored migration: the account is created inside the same transaction** (Nov 6) | `0x02f89fb8…9b83`, block 406,552 | All 6 frames succeed: approval, sponsor check, create account, ETH, dUSD, record. 7.87M gas, all paid by the sponsor |
 | Sponsored migration: 1.0000 ETH + 2,400 dUSD from an exposed EOA into its Lifeboat account | [`0xe0645ace…b02c`](https://explorer.altmempool.wtf/) | All 5 frames succeed, old EOA left at exactly 0, the sponsor paid 0.000589 ETH of gas |
 | Send in HYBRID mode (ECDSA + XMSS) | `0x9995dc0c…0a34` | Admitted, mined |
 | Attacker with the old ECDSA private key and a forged quantum-safe signature | *(rejected)* | `LifeboatAccount.BadPqSignature()` |
@@ -29,6 +31,7 @@ Everything below ran on the public ERC-8421 alt-mempool devnet (chain 1337) on N
 | Same attack again | *(rejected)* | `LifeboatAccount.BadPqSignature()` |
 | **The same valid migration, sent to the canonical mempool** | *(rejected)* | `StorageReadNonSender` |
 | The same valid migration through the alt mempool | `0x888b3d32…0015` | Admitted, mined |
+| A Lifeboat account transaction, same bytes, through the **public** mempool | `0xfe29a799…b584`, block 406,088 | Mined: account transactions don't need the alt mempool, only the sponsor does |
 
 Full hashes are in [Devnet deployment](#devnet-deployment).
 
@@ -258,8 +261,14 @@ explorer https://explorer.altmempool.wtf/ (the devnet can be reset).
   weakens that key. The onchain nonce binding stops a key being *accepted* twice, but it
   can't stop a careless signer from *producing* two signatures.
 - 1,024 transactions per key tree before `rotateKeys`.
-- A Lifeboat account created by the factory uses the helper contracts of `@forshtat/hegota-support`
-  for the frame opcodes, so creating one costs about 7.3M gas on this devnet.
+- A Lifeboat account uses the helper contracts of `@forshtat/hegota-support` for the frame
+  opcodes, so creating one costs ~7.7M *state* gas on this devnet (~158k execution), which
+  the sponsor pays.
+- Two alt-mempool nodes run on the devnet. On Nov 6 the workshop gateway
+  (`altmempoolgateway.forshtat.com`) stopped relaying for over an hour without gossiping to
+  the main node, so Lifeboat now sends to `altmempool.forshtat.com`. Ordinary Lifeboat
+  account transactions also fall back to the node's own mempool after 45 s (they qualify
+  there; the sponsored migration doesn't).
 - The sponsor's "exposed" test is nonce > 0. An EIP-7702 delegated EOA with nonce 0 is
   exposed too, but the sponsor can't see its code during validation.
 - The Tor exposure check relies on the tor-js demo gateway, which the Anon-RPC docs call

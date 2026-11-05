@@ -45,16 +45,29 @@ nobody needs to watch a progress bar.
 
 **On screen:** click **Try the move on the devnet**, or open **Move aboard**. Click through:
 Get devnet ETH → Send one transaction → **Make keys** (pause on "1,024 one-time keys, made in this
-browser") → Download → I stored it → **Move everything**. *Cut the wait.* Show "Done in one atomic
-transaction. The old account is empty."
+browser") → Download → I stored it → **Try the public mempool first** (the panel shows "Refused") →
+**Move everything**. *Cut the wait.* Show "Done in one atomic transaction. The old account is empty."
+and the panel's second row: "Admitted and mined".
 
 **Say:**
 > Here's a demo account in the same situation. Lifeboat makes it a new set of quantum-safe keys,
 > a thousand and twenty-four of them, right here in the browser. They never leave this device.
 >
-> Then one click moves everything, the ETH and the tokens, into a new Lifeboat account in a
-> single transaction. All of it moves, or none of it does. And the user pays nothing: a sponsor
-> covers the fee. Done. The old account is empty.
+> Then one click creates the new account and moves everything into it, the ETH and the tokens,
+> in a single transaction. All of it moves, or none of it does. And the user pays nothing, not
+> even for the new account: a sponsor covers the fee. Ethereum's normal mempool refuses this
+> transaction. The new alternative mempool accepts it. Done. The old account is empty.
+
+---
+
+## Scene 3b · The public log (about 15 s)
+
+**On screen:** open **Public log**. Click **Verify on the devnet** on the newest row → "Matches the chain".
+
+**Say:**
+> If you want, your move can be listed on a public log stored on Arkiv, so there's a lasting record
+> even after this test network resets. You don't have to trust the log: one click checks it
+> against the real transaction.
 
 ---
 
@@ -88,13 +101,11 @@ changes to **Quantum-safe only**. Send 0.01 ETH. Point at the key grid: an orang
 
 ## Scene 6 · What's new, and close (2:30–3:00)
 
-**On screen:** open **How it works**, scroll to "04 · Why it needs the alt mempool". Then back to
-the Check page with the lifeboat.
+**On screen:** back to the Check page with the lifeboat.
 
 **Say:**
 > Under the hood: this runs on EIP-8141, Ethereum's new kind of smart account, on its test
-> network. The free migration is only possible with the new alternative mempool. Ethereum's
-> normal mempool rejects it, and we show that with real transactions.
+> network.
 >
 > Quantum-safe signatures already exist. What didn't exist was a way to get your account there.
 > Lifeboat is that way: check, move aboard in one free transaction, and stay safe after Q-day.
