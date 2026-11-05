@@ -877,27 +877,27 @@ var HL = (() => {
 </script>
 <script type="module" id="hl-figure">
 /**
- * Davits: a lifeboat hangs outboard of a ship's side from two curved davits.
- * The pointer's height lowers it down its falls to the water on one spring.
- * At rest it hangs a third of the way down, swung out and ready, and its
- * canopy carries the bright stroke. While it is lowering the falls take the
- * bright; once afloat, the hull does. The slider is the pointer travel, in
- * viewBox units, that a full launch takes: less travel, a stronger answer.
- *
- * The pattern: a continuous answer. One spring, a hit band fixed on screen
- * (it never follows the boat), and a rest that already tells the story.
+ * Davits: a lifeboat hangs outboard of a ship's side from two radial davits. The
+ * pointer's height lowers it down its falls to the water on one spring. At rest it
+ * hangs part way down, swung out, its canopy bright; lowering, the falls take the
+ * bright; afloat, the hull. The slider is the pointer travel a full launch takes.
+ * The pattern: a continuous answer, a hit band fixed on screen, a designed rest.
  */
 const {
   Cam, clamp, facing, fillet, fit, hull, open, poly, prism, proj, rings, ringAt, run, seg, spring, stepS,
   mk, pointer, put, register, disposer, solid,
 } = HL;
 
+const SCALE = 1.78; // the camera scale, also the tubes' width in screen units per world unit
 const DECK = 50; // deck height above the water
 const SHIP = [0, 0, 150, 22]; // the ship's side: x0, y0, x1, y1; the side faces +y, outboard
 const BX0 = 38, BX1 = 112, BY0 = 40, BY1 = 62, BYM = (BY0 + BY1) / 2; // the boat's gunwale
 const BH = 12, CH = 11; // hull depth, canopy height
 const STOWED = DECK + 10, AFLOAT = -3, REST = 0.46; // keel heights, and rest as a share of the way down
-const DAVITS = [52, 98], TIP = DECK + 40;
+// Radial davits: a pedestal inboard on the deck, a tubular post, a quarter-circle bend, a
+// straight arm out over the boat, and a block at the tip that the falls run from.
+const DAVITS = [44, 106], DY = 4, POST = 30, BEND = 13, ARM = DECK + 4 + POST + BEND, TUBE = 2.1;
+const BLOCK = [ARM - 9, ARM - 2.5], TIP = BLOCK[0]; // the block hangs under the arm's end
 const keelAt = (f) => STOWED + (AFLOAT - STOWED) * f;
 
 /** The boat in plan: a flat transom aft, a pointed bow forward, every corner rounded. */
@@ -917,12 +917,43 @@ function shape(sx, sy) {
   });
 }
 
-/** A davit: up from the deck edge, then a swan neck reaching outboard over the boat. */
-const davitPts = (x) => [[x, 20, DECK], [x, 20, DECK + 24], [x, 23, DECK + 34], [x, 31, DECK + 40], [x, 41, DECK + 42], [x, BYM, TIP]];
+/** A davit's centreline in world space: post, bend and arm, as two runs split at the rail. */
+function davitLine(x) {
+  const post = [[x, DY, DECK + 4], [x, DY, DECK + 4 + POST]];
+  const bend = [];
+  for (let k = 1; k <= 8; k++) {
+    const a = (k / 8) * (Math.PI / 2);
+    bend.push([x, DY + BEND - BEND * Math.cos(a), DECK + 4 + POST + BEND * Math.sin(a)]);
+  }
+  return { inboard: post.concat(bend), arm: [[x, DY + BEND, ARM], [x, BYM + 2.5, ARM]] };
+}
+
+/** A tube along a screen polyline: an opaque body, an outline open where it joins another tube, one crease. */
+function tube(pts, w, capEnd) {
+  const n = pts.length, L = [], R = [], crease = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, tx = (b[0] - a[0]) / l, ty = (b[1] - a[1]) / l, [x, y] = pts[i];
+    L.push([x - ty * w, y + tx * w]);
+    R.push([x + ty * w, y - tx * w]);
+    crease.push([x - ty * w * 0.35, y + tx * w * 0.35]);
+  }
+  const cap = (p, q, c) => { // a half circle from p to q around c
+    const out = [], a0 = Math.atan2(p[1] - c[1], p[0] - c[0]);
+    for (let k = 1; k < 6; k++) out.push([c[0] + w * Math.cos(a0 - (k / 6) * Math.PI), c[1] + w * Math.sin(a0 - (k / 6) * Math.PI)]);
+    return out;
+  };
+  const end = capEnd ? cap(L[n - 1], R[n - 1], pts[n - 1]) : [];
+  const outline = L.concat(end, R.reverse());
+  return { body: poly(outline), edge: capEnd ? open(outline) : open(L) + " " + open(R), crease: open(crease) };
+}
+
+/** Draw a tube: its opaque body first, so it hides what is behind it, then outline and crease. */
+const drawTube = (parent, t) => [["fo", t.body], ["sil nf", t.edge], ["lo nf", t.crease]].forEach(([c, d]) => mk("path", { class: c, d }, parent));
 
 function mount({ stage, svg, read }, value) {
   const bag = disposer();
-  const C = Cam(45, 0.5, 1.78);
+  const C = Cam(45, 0.5, SCALE);
   fit(C, [
     [SHIP[0], SHIP[1], 0], [SHIP[2], SHIP[1], DECK + 6], [SHIP[2], SHIP[3], 0], [SHIP[0], SHIP[3], DECK + 42],
     [BX0, BY1, AFLOAT], [BX1, BY1, AFLOAT], [BX0, BY0, STOWED + BH + CH],
@@ -947,6 +978,15 @@ function mount({ stage, svg, read }, value) {
   for (let x = SHIP[0] + 8; x < SHIP[2]; x += 14) marks.push(seg(P(x, SHIP[3], DECK), P(x, SHIP[3], RAIL)));
   mk("path", { class: "lo nf", d: marks.join(" ") }, g);
 
+  // The davits' pedestals and posts stand inboard, behind the boat: paint them first.
+  const davEls = DAVITS.map((x) => {
+    const [pr, pi] = rings(x - 4.2, DY - 4.2, x + 4.2, DY + 4.2, 2.4, 0.9);
+    put(solid(g), prism(P, front, pr, pi, DECK, DECK + 4));
+    const line = davitLine(x);
+    drawTube(g, tube(line.inboard.map((p) => P(...p)), TUBE * SCALE, false));
+    return line;
+  });
+
   // The boat: a hull that narrows to its keel, under a domed canopy.
   const boat = mk("g", {}, g);
   const keel = shape(0.78, 0.42), gun = shape(1, 1), gunIn = shape(0.97, 0.88);
@@ -957,8 +997,15 @@ function mount({ stage, svg, read }, value) {
     crease: open(ringAt(P, run(inner, front), z1)),
   });
 
-  // The davits and the falls come after the boat: they reach over it.
-  mk("path", { class: "sil nf", d: DAVITS.map((x) => open(davitPts(x).map((p) => P(...p)))).join(" ") }, g);
+  // The arms and their blocks come after the boat: they reach out above it.
+  DAVITS.forEach((x, i) => {
+    // The arm starts a little inside the bend, so its fill covers the joint and no seam shows.
+    const arm = davEls[i].inboard.slice(-2).concat(davEls[i].arm.slice(1));
+    drawTube(g, tube(arm.map((p) => P(...p)), TUBE * SCALE, true));
+    const [br, bi] = rings(x - 2.6, BYM - 2.6, x + 2.6, BYM + 2.6, 1.6, 0.6);
+    put(solid(g), prism(P, front, br, bi, BLOCK[0], BLOCK[1]));
+    mk("path", { class: "sil nf", d: open([P(x, BYM, BLOCK[1]), P(x, BYM, ARM)]) }, g);
+  });
   const falls = mk("path", { class: "lo nf" }, g);
 
   const sp = spring(REST, { eps: 0.002 });
