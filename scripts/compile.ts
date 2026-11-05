@@ -1,0 +1,66 @@
+/**
+ * Compile contracts/*.sol with solc-js 0.8.28 (no Foundry needed) into out/<Contract>.json.
+ *   pnpm build:contracts
+ */
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const solc = require("solc");
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const contractsDir = join(root, "contracts");
+const outDir = join(root, "out");
+
+export function compile(): Record<string, { abi: unknown[]; bytecode: string; deployedBytecode: string }> {
+  const sources: Record<string, { content: string }> = {};
+  for (const f of readdirSync(contractsDir).filter((f) => f.endsWith(".sol"))) {
+    sources[`contracts/${f}`] = { content: readFileSync(join(contractsDir, f), "utf8") };
+  }
+
+  const input = {
+    language: "Solidity",
+    sources,
+    settings: {
+      viaIR: true,
+      optimizer: { enabled: true, runs: 200 },
+      evmVersion: "cancun",
+      remappings: ["@forshtat/hegota-support/=node_modules/@forshtat/hegota-support/"],
+      outputSelection: { "*": { "*": ["abi", "evm.bytecode.object", "evm.deployedBytecode.object"] } },
+    },
+  };
+
+  const findImports = (path: string) => {
+    const p = join(root, path);
+    return existsSync(p) ? { contents: readFileSync(p, "utf8") } : { error: `not found: ${path}` };
+  };
+
+  const output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
+  const errors = (output.errors ?? []).filter((e: any) => e.severity === "error");
+  for (const e of output.errors ?? []) console.error(e.formattedMessage);
+  if (errors.length) throw new Error(`solc: ${errors.length} error(s)`);
+
+  const artifacts: Record<string, any> = {};
+  for (const [file, contracts] of Object.entries<any>(output.contracts)) {
+    if (!file.startsWith("contracts/")) continue;
+    for (const [name, c] of Object.entries<any>(contracts)) {
+      artifacts[name] = {
+        abi: c.abi,
+        bytecode: `0x${c.evm.bytecode.object}`,
+        deployedBytecode: `0x${c.evm.deployedBytecode.object}`,
+      };
+    }
+  }
+  return artifacts;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  mkdirSync(outDir, { recursive: true });
+  const artifacts = compile();
+  for (const [name, a] of Object.entries(artifacts)) {
+    writeFileSync(join(outDir, `${name}.json`), JSON.stringify(a, null, 2));
+    console.log(`out/${name}.json  (${(a.deployedBytecode.length - 2) / 2} bytes)`);
+  }
+}
