@@ -39,6 +39,8 @@ export const calldata = {
   executeBatch: (calls: { to: Address; value: bigint; data: Hex }[]) =>
     encodeFunctionData({ abi: lifeboatAbi, functionName: "executeBatch", args: [calls] }),
   enablePqOnly: () => encodeFunctionData({ abi: lifeboatAbi, functionName: "enablePqOnly", args: [] }),
+  rotateKeys: (pubSeed: Hex, root: Hex, height: bigint) =>
+    encodeFunctionData({ abi: lifeboatAbi, functionName: "rotateKeys", args: [pubSeed, root, height] }),
   validateTx: () => encodeFunctionData({ abi: lifeboatAbi, functionName: "validateTx", args: [] }),
 };
 

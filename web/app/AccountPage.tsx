@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
-import { parseEther, type Address } from "viem";
+import { ArrowUpRight, Copy, ShieldCheck } from "lucide-react";
+import { bytesToHex, parseEther, type Address } from "viem";
 import { readMigrations, type LogRow } from "../../src/arkiv/log.js";
 import { deployment, KEY_TREE_HEIGHT } from "../lib/deployment.js";
 import { reasonText } from "../lib/wallet.js";
@@ -19,12 +19,13 @@ function useLog(lifeboat: Address | undefined) {
 }
 
 export function AccountPage() {
-  const { wallet, keys, snapshot, refresh, touch } = useWallet();
+  const { wallet, keys, snapshot, refresh, touch, deriveKeys } = useWallet();
   const { busy, error, run } = useAction();
   const [amount, setAmount] = useState("0.0100");
   const [to, setTo] = useState<string>(deployment.recipient);
   const [attack, setAttack] = useState<string | null>(null);
   const [confirmSwitch, setConfirmSwitch] = useState(false);
+  const [optIn, setOptIn] = useState(false);
   const lb = snapshot?.lifeboat;
   const log = useLog(wallet.state.lifeboat);
 
@@ -165,6 +166,27 @@ export function AccountPage() {
             <h2>Keys</h2>
             <p className="t2 small">Each cell is one quantum-safe key. A key signs once, then it's spent.</p>
             <KeyGrid total={1 << KEY_TREE_HEIGHT} nextLeaf={nextLeaf} signed={signed} />
+            {nextLeaf >= 900 && (
+              <p className="small" style={{ color: "var(--caution)", marginBottom: 0 }}>
+                {1024 - nextLeaf} keys left. Rotate to a fresh tree before they run out.
+              </p>
+            )}
+            <hr className="rule" />
+            <div className="row between" style={{ flexWrap: "wrap" }}>
+              <span className="t2 small">Rotate to 1,024 fresh keys. The rotation is signed with a key from this tree.</span>
+              <button
+                className="btn secondary small"
+                disabled={!keysReady || !!busy}
+                onClick={() =>
+                  void act("rotate", async () => {
+                    const seed = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+                    await wallet.rotate({ seed, kp: await deriveKeys(seed) });
+                  })
+                }
+              >
+                {busy === "rotate" ? "Rotating" : "Rotate keys"}
+              </button>
+            </div>
           </section>
 
           <section className="card small">
@@ -172,10 +194,28 @@ export function AccountPage() {
             {log.failed && <p className="t2">Arkiv is unreachable right now. The account doesn't depend on it.</p>}
             {!log.failed && log.rows === null && <p className="t2">Reading Arkiv…</p>}
             {log.rows?.length === 0 && (
-              <p className="t2" style={{ marginBottom: 0 }}>
-                Not listed. Listing a migration on the public Arkiv log is opt-in: only facts already in the migration
-                transaction, published by this deployment's publisher.
-              </p>
+              <>
+                <p className="t2">
+                  Not listed. Listing is opt-in: only facts already in the migration transaction, written by this
+                  deployment's publisher after it re-checks the transaction on the devnet.
+                </p>
+                {wallet.state.migration &&
+                  (optIn ? (
+                    <>
+                      <p className="t2" style={{ marginBottom: 8 }}>Hand this to the publisher, or run it if you are one:</p>
+                      <div className="row" style={{ gap: 8 }}>
+                        <code className="mono small" style={{ overflowWrap: "anywhere" }}>pnpm devnet publish {wallet.state.migration.hash}</code>
+                        <button className="btn quiet small" aria-label="Copy command" onClick={() => void navigator.clipboard?.writeText(`pnpm devnet publish ${wallet.state.migration!.hash}`)}>
+                          <Copy size={14} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button className="btn secondary small" onClick={() => setOptIn(true)}>
+                      List my migration
+                    </button>
+                  ))}
+              </>
             )}
             {log.rows?.map((r) => (
               <dl className="facts" key={r.key} style={{ marginTop: 8 }}>

@@ -1,10 +1,18 @@
 import * as tx from "@forshtat/hegota-support/tx";
 import type { FrameTx } from "@forshtat/hegota-support/tx";
-import { encodeFunctionData, parseAbi, type Address, type Hex } from "viem";
+import { encodeFunctionData, parseAbi, toFunctionSelector, type Address, type Hex } from "viem";
 import { devnet, profile } from "./devnet.js";
 
 const sponsorAbi = parseAbi(["function sponsor(address lifeboat)", "function recordSponsorship()"]);
 const erc20Abi = parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]);
+const factoryAbi = parseAbi(["function create(address owner, bytes32 pubSeed, bytes32 root, uint256 height) payable returns (address)"]);
+const CREATE_SELECTOR = toFunctionSelector("create(address,bytes32,bytes32,uint256)");
+/**
+ * Gas for the create frame, measured with ethrex_simulateFrameTransaction on the devnet: creating
+ * an account uses ~158k execution gas but ~7.7M state gas (it stores the account and its opcode
+ * helpers). Too little state gas makes a nested deploy halt and swallow its execution gas.
+ */
+export const CREATE_LIMITS = { execution: 400_000n, state: 8_500_000n };
 
 /** EIP-8141 ATOMIC_BATCH_FLAG: this frame and the next SENDER frame succeed or fail together. */
 const ATOMIC_BATCH = 0x4;
@@ -21,6 +29,8 @@ export interface MigrationPlan {
   /** Wei to move. Gas is sponsored, so this can be the whole balance. */
   eth: bigint;
   tokens: { token: Address; amount: bigint }[];
+  /** When the Lifeboat account doesn't exist yet: create it in the same sponsored tx. */
+  create?: { factory: Address; pubSeed: Hex; root: Hex; height: bigint };
 }
 
 /**
@@ -41,6 +51,16 @@ export function buildMigrationTx(p: MigrationPlan): FrameTx {
     });
   }
   if (moves.length === 0) throw new Error("nothing to migrate");
+  if (p.create) {
+    // Deploying the account (and its opcode helpers) costs ~7.5M gas; the sponsor pays it.
+    moves.unshift({
+      target: p.create.factory,
+      value: 0n,
+      data: encodeFunctionData({ abi: factoryAbi, functionName: "create", args: [p.exposed, p.create.pubSeed, p.create.root, p.create.height] }),
+      execution: CREATE_LIMITS.execution,
+      state: CREATE_LIMITS.state,
+    });
+  }
 
   const frames = [
     tx.frame(profile, "VERIFY", { scope: "EXECUTION", target: null, execution: EOA_VERIFY_GAS }),
@@ -75,7 +95,9 @@ export function buildMigrationTx(p: MigrationPlan): FrameTx {
     nonceSeq: p.nonce,
     frames,
     signatures: [tx.secp256k1Placeholder(profile)],
-    fees: { maxFeePerGas: devnet.maxFeePerGasWei },
+    // The base fee here is a few wei: a small tip keeps the sponsor's cost per migration low.
+    // (2.5 gwei / 0.002 gwei sit 10%+ above earlier attempts, so a stuck one gets replaced.)
+    fees: { maxFeePerGas: 2_500_000_000n, maxPriorityFeePerGas: 2_000_000n },
   });
 }
 
@@ -86,6 +108,8 @@ export interface MigrationSummary {
   sponsor: Address | null;
   ethWei: bigint;
   tokens: { token: Address; amount: bigint }[];
+  /** Whether the same transaction created the Lifeboat account. */
+  created: boolean;
 }
 
 const TRANSFER_SELECTOR = "0xa9059cbb";
@@ -105,11 +129,15 @@ export function summarizeMigrationTx(t: {
   if (!sponsorFrame) throw new Error("no sponsor(lifeboat) VERIFY frame: not a sponsored migration");
   const lifeboat = `0x${sponsorFrame.data.slice(2 + 8 + 24, 2 + 8 + 64)}`.toLowerCase() as Address;
 
-  let ethWei = 0n;
+  let ethWei = 0n, created = false;
   const tokens: { token: Address; amount: bigint }[] = [];
   for (const f of t.frames.filter((f) => Number(f.mode) === 2)) {
     const to = (f.to ?? exposed).toLowerCase() as Address;
     const data = f.data.toLowerCase();
+    if (data.startsWith(CREATE_SELECTOR) && data.length === 2 + 8 + 256 && Number(f.value) === 0) {
+      created = true; // the account is created for the sender; the sponsor checks its address
+      continue;
+    }
     if (data === "0x") {
       if (to !== lifeboat) throw new Error(`ETH frame pays ${to}, not the Lifeboat account`);
       ethWei += BigInt(f.value);
@@ -121,5 +149,5 @@ export function summarizeMigrationTx(t: {
       throw new Error("a SENDER frame is neither an ETH move nor transfer(lifeboat, amount)");
     }
   }
-  return { exposed, lifeboat, sponsor: (sponsorFrame.to?.toLowerCase() as Address) ?? null, ethWei, tokens };
+  return { exposed, lifeboat, sponsor: (sponsorFrame.to?.toLowerCase() as Address) ?? null, ethWei, tokens, created };
 }

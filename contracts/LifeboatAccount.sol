@@ -6,10 +6,6 @@ import {Devnet} from "@forshtat/hegota-support/contracts/Devnet.sol";
 import {Scope, SigParam, TxParam} from "@forshtat/hegota-support/contracts/Params.sol";
 import {XmssVerifier} from "./XmssVerifier.sol";
 
-interface IStakingRegistry {
-    function addStake(uint32 unstakeDelaySec) external payable;
-}
-
 /// A quantum-safe EIP-8141 account.
 ///
 /// Every transaction must carry an XMSS-lite signature (hash-based, quantum-safe) over the
@@ -38,15 +34,17 @@ contract LifeboatAccount is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
     uint256 internal constant SCHEME_ARBITRARY = 0;
     uint256 internal constant SCHEME_SECP256K1 = 1;
 
-    address public immutable owner;
+    /// The factory that deployed this account, the only caller of init().
+    address public immutable factory;
 
-    // Packed into one slot: VERIFY reads it on every tx, and each cold slot costs 2,100 gas
-    // of a 100k validation budget.
+    // Packed into one slot (20 + 1 + 4 + 7 bytes): VERIFY reads it on every tx, and each cold
+    // slot costs 2,100 gas of a 100k validation budget.
+    address public owner;
     Mode public mode;
     uint32 public height;
     /// Leaf index = tx nonce - nonceBase. 0 at deploy (a contract's nonce starts above 0 and
     /// the helper deployments raise it, so the first few leaves simply go unused); reset on rotation.
-    uint64 public nonceBase;
+    uint56 public nonceBase;
     bytes32 public pubSeed;
     bytes32 public root;
 
@@ -59,23 +57,23 @@ contract LifeboatAccount is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
     error WrongOneTimeKey(uint256 expected, uint256 got);
     error BadOwnerSignature();
     error CallFailed(uint256 index, bytes reason);
+    error NotFactory();
+    error AlreadyInitialized();
 
-    /// @param stakeValue part of msg.value staked for this account, so the alt mempool admits its
-    ///        validation (which costs more than the 100k unstaked budget). The rest stays as balance.
-    constructor(
-        address owner_,
-        bytes32 pubSeed_,
-        bytes32 root_,
-        uint256 height_,
-        address stakingRegistry,
-        uint256 stakeValue,
-        uint32 unstakeDelaySec
-    ) payable {
+    /// No arguments, so every account has the same init code and its CREATE2 address can be
+    /// predicted cheaply (the migration sponsor does it during validation). init() sets the keys.
+    constructor() payable {
+        factory = msg.sender;
+    }
+
+    /// Called once by the factory, in the same call that deploys the account.
+    function init(address owner_, bytes32 pubSeed_, bytes32 root_, uint256 height_) external {
+        if (msg.sender != factory) revert NotFactory();
+        if (owner != address(0)) revert AlreadyInitialized();
         owner = owner_;
         pubSeed = pubSeed_;
         root = root_;
         height = uint32(height_);
-        if (stakeValue > 0) IStakingRegistry(stakingRegistry).addStake{value: stakeValue}(unstakeDelaySec);
         emit KeysRotated(pubSeed_, root_, height_, 0);
     }
 
@@ -140,7 +138,7 @@ contract LifeboatAccount is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
         root = newRoot;
         height = uint32(newHeight);
         // This tx consumed nonce N; the next tx (nonce N + 1) uses leaf 0 of the new tree.
-        nonceBase = uint64(txparam(TxParam.NONCE) + 1);
+        nonceBase = uint56(txparam(TxParam.NONCE) + 1);
         emit KeysRotated(newPubSeed, newRoot, newHeight, nonceBase);
     }
 }

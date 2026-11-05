@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { hexToBytes } from "viem";
+import { hexToBytes, type Hex } from "viem";
 import type { KeyPair } from "../../src/pq/xmss.js";
 import { KEY_TREE_HEIGHT } from "../lib/deployment.js";
 import { loadWallet, resetWallet } from "../lib/store.js";
@@ -13,6 +13,8 @@ interface Ctx {
   snapshot: Snapshot | null;
   refresh: () => Promise<void>;
   generateKeys: () => void;
+  /** Derive a key tree for another seed in a worker (used when rotating). */
+  deriveKeys: (seed: Hex) => Promise<KeyPair>;
   reset: () => void;
   /** Bumped after every state change, so views re-render. */
   version: number;
@@ -60,6 +62,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [wallet, generateKeys, refresh]);
 
+  const deriveKeys = useCallback(
+    (seed: Hex) =>
+      new Promise<KeyPair>((resolve, reject) => {
+        const w = new Worker(new URL("../lib/pq.worker.ts", import.meta.url), { type: "module" });
+        w.onerror = (e) => (w.terminate(), reject(new Error(e.message)));
+        w.onmessage = (e: MessageEvent<{ type: string; kp?: KeyPair }>) => {
+          if (e.data.type === "done") (w.terminate(), resolve(e.data.kp!));
+        };
+        w.postMessage({ seed: hexToBytes(seed), height: KEY_TREE_HEIGHT });
+      }),
+    [],
+  );
+
   const reset = useCallback(() => {
     worker.current?.terminate();
     worker.current = null;
@@ -69,8 +84,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ wallet, keys, snapshot, refresh, generateKeys, reset, version, touch: () => setVersion((v) => v + 1) }),
-    [wallet, keys, snapshot, refresh, generateKeys, reset, version],
+    () => ({ wallet, keys, snapshot, refresh, generateKeys, deriveKeys, reset, version, touch: () => setVersion((v) => v + 1) }),
+    [wallet, keys, snapshot, refresh, generateKeys, deriveKeys, reset, version],
   );
   return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;
 }

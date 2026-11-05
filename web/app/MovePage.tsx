@@ -21,6 +21,7 @@ export function MovePage() {
   const { wallet, keys, snapshot, refresh, generateKeys, touch } = useWallet();
   const { busy, error, run } = useAction();
   const [backedUp, setBackedUp] = useState(false);
+  const [publicTry, setPublicTry] = useState<{ accepted: boolean; message: string } | null>(null);
 
   const ex = snapshot?.exposed;
   const funded = !!ex && (ex.eth > 0n || ex.nonce > 0n || !!wallet.state.migration);
@@ -193,6 +194,57 @@ export function MovePage() {
             </Step>
           </ol>
           {busy === "move" && <p className="meta" style={{ marginTop: 16 }}>Creating the account and moving, about 20 seconds on the devnet</p>}
+
+          {(step >= 5 || moved) && (
+            <div className="mempools">
+              <div className="row between" style={{ flexWrap: "wrap" }}>
+                <h3 style={{ margin: 0 }}>The same transaction, two mempools</h3>
+                {!moved && !publicTry && (
+                  <button className="btn quiet small" disabled={!!busy} onClick={() => void run("public", async () => setPublicTry(await wallet.tryPublicMempool()))}>
+                    {busy === "public" ? "Sending" : "Try the public mempool first"}
+                  </button>
+                )}
+              </div>
+              <ul className="list small">
+                <li>
+                  <span>
+                    <span className={`dot ${publicTry ? (publicTry.accepted ? "positive" : "negative") : ""}`} style={{ display: "inline-block", marginRight: 8 }} />
+                    Ethereum's public mempool
+                  </span>
+                  <span className="t2">
+                    {!publicTry && "not tried"}
+                    {publicTry && !publicTry.accepted && (
+                      <>
+                        Refused · <span className="mono">{publicTry.message.slice(0, 60)}</span>
+                      </>
+                    )}
+                    {publicTry?.accepted && publicTry.message}
+                  </span>
+                </li>
+                <li>
+                  <span>
+                    <span className={`dot ${moved ? "positive" : ""}`} style={{ display: "inline-block", marginRight: 8 }} />
+                    ERC-8421 alt mempool
+                  </span>
+                  <span className="t2">
+                    {moved ? (
+                      <>
+                        Admitted and mined · <span className="mono">{short(wallet.state.migration!.hash, 8, 4)}</span>
+                      </>
+                    ) : (
+                      "Move everything sends it here"
+                    )}
+                  </span>
+                </li>
+              </ul>
+              {publicTry && !publicTry.accepted && (
+                <p className="meta" style={{ margin: "8px 0 0" }}>
+                  The public mempool won't let the sponsor read another contract while it checks the transaction. The
+                  alt mempool allows it for a staked sponsor, which is what makes the free move possible.
+                </p>
+              )}
+            </div>
+          )}
           {error && !faucetEmpty && (
             <div className="notice negative small" style={{ marginTop: 16 }}>
               {error}

@@ -18,7 +18,7 @@ export const devnet = {
   stakeWei: 12_000_000_000_000_000n,
   unstakeDelaySec: 86_400,
   legacyGasPriceWei: 2_000_000n, // 0.002 gwei; base fee is a few wei
-  deployGasLimit: 9_000_000n,
+  deployGasLimit: 15_000_000n, // code storage is costly here; the factory alone needs more than 9M
   maxFeePerGasWei: 2_000_000_000n, // 2 gwei
 };
 

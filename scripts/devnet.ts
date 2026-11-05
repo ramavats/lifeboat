@@ -7,7 +7,8 @@
  *   pnpm devnet send       send 1 gwei from the Lifeboat account (mode read from chain)
  *   pnpm devnet pq-only    switch the Lifeboat account to quantum-safe only
  *   pnpm devnet attack     try to spend with the stolen ECDSA key and a forged PQ signature
- *   pnpm devnet publish    opt in: list the migration on the public Arkiv log (verified from chain)
+ *   pnpm devnet publish [txHash]   opt in: list a migration on the public Arkiv log (verified from chain);
+ *                                  without a hash, this script's own last migration
  *   pnpm devnet fund <address> [eth]   send devnet ETH from the operator (when the faucet is empty)
  *   pnpm devnet status
  * Throwaway devnet keys, the XMSS seed and the one-time-key journal live in
@@ -93,9 +94,16 @@ async function tokenBalance(token: Address, who: Address): Promise<bigint> {
 }
 
 async function ensureFunds(key: Hex, min = ETH / 10n) {
-  if ((await balanceOf(addr(key))) < min) {
+  if ((await balanceOf(addr(key))) >= min) return;
+  try {
     console.log(`  faucet → ${addr(key)}`);
     await faucet(addr(key));
+  } catch (e) {
+    // The shared faucet runs dry: fund from the operator instead.
+    const op = load().operatorKey;
+    if (key === op) throw e;
+    console.log(`  faucet unavailable (${(e as Error).message}); funding from the operator`);
+    await waitReceipt(await sendLegacy(op, { to: addr(key), value: min, gas: 210_000n }));
   }
 }
 
@@ -184,25 +192,13 @@ async function migrate() {
   const s = load();
   const exposed = addr(s.exposedKey);
   const kp = keys(s);
-
-  if (!s.lifeboat) {
-    const f = artifact("LifeboatFactory");
-    const hash = await sendLegacy(s.operatorKey, {
-      to: s.factory!,
-      data: encodeFunctionData({ abi: f.abi, functionName: "create", args: [exposed, bytesToHex(kp.pub.pubSeed), bytesToHex(kp.pub.root), BigInt(s.height)] }),
-      gas: devnet.deployGasLimit,
-    });
-    const r = await waitReceipt(hash);
-    if (r.status !== "0x1") throw new Error("factory.create reverted");
-    for (const log of r.logs) {
-      try {
-        const ev = decodeEventLog({ abi: f.abi, data: log.data, topics: log.topics }) as any;
-        if (ev.eventName === "Created") s.lifeboat = ev.args.account;
-      } catch {}
-    }
-    save(s);
-    console.log(`  Lifeboat account created: ${s.lifeboat}`);
-  }
+  const f = artifact("LifeboatFactory");
+  const args = [exposed, bytesToHex(kp.pub.pubSeed), bytesToHex(kp.pub.root), BigInt(s.height)] as const;
+  const predicted = (await call("eth_call", [{ to: s.factory!, data: encodeFunctionData({ abi: f.abi, functionName: "predict", args }) }, "latest"])) as Hex;
+  s.lifeboat = `0x${predicted.slice(26)}` as Address;
+  save(s);
+  const exists = (await call("eth_getCode", [s.lifeboat, "latest"])) !== "0x";
+  console.log(`  Lifeboat account ${s.lifeboat} ${exists ? "(exists)" : "(created in the same transaction)"}`);
 
   const eth = await balanceOf(exposed);
   const dusd = await tokenBalance(s.token!, exposed);
@@ -211,11 +207,12 @@ async function migrate() {
 
   const unsigned = buildMigrationTx({
     exposed,
-    lifeboat: s.lifeboat!,
+    lifeboat: s.lifeboat,
     sponsor: s.sponsor!,
     nonce: await nonceOf(exposed),
     eth,
     tokens: dusd > 0n ? [{ token: s.token!, amount: dusd }] : [],
+    create: exists ? undefined : { factory: s.factory!, pubSeed: args[1], root: args[2], height: args[3] },
   });
   const signed = await ftx.signTx(profile, unsigned, s.exposedKey, 0);
   if (!(await submit(s, "migrate", signed))) return;
@@ -314,23 +311,34 @@ async function sponsorChecks() {
  * devnet: the mined migration transaction's own frames, its receipt, and the factory registry.
  * (The devnet node keeps no historical state, so we read what the tx moved, not old balances.)
  */
+/** Deployments whose migrations the log accepts: the current one and the first (pre-CREATE2). */
+const FIRST_DEPLOYMENT = {
+  factory: "0xb343620fe0f4125acb960e7613ddcd7a3ce0f494" as Address,
+  sponsor: "0x4b94121f0343a95c90e9fd6bb3e0d6fa7448ed0c" as Address,
+  token: "0x53af43f3d696bef8e7fb022b8a707f7103f952a0" as Address,
+};
+
 async function publish() {
   const s = load();
-  const m = s.log.find((l) => l.step === "migrate");
-  if (!m || !s.lifeboat) throw new Error("no completed migration to publish");
+  const arg = process.argv[3] as Hex | undefined;
+  const hash = arg ?? [...s.log].reverse().find((l) => l.step === "migrate")?.hash;
+  if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("usage: pnpm devnet publish [migration tx hash]");
+  const m = { hash };
 
   const r = await waitReceipt(m.hash);
   const failed = (r.frameReceipts ?? []).some((f: any) => f.status !== "0x1");
   if (r.status !== "0x1" || failed) throw new Error("migration tx did not fully succeed");
   const t = await call("eth_getTransactionByHash", [m.hash]);
   const summary = summarizeMigrationTx(t);
-  if (summary.lifeboat !== s.lifeboat.toLowerCase()) throw new Error("tx moved funds into a different account");
-
-  const isLifeboat = BigInt(await call("eth_call", [{ to: s.factory!, data: encodeFunctionData({ abi: artifact("LifeboatFactory").abi, functionName: "isLifeboat", args: [summary.lifeboat] }) }, "latest"]));
-  if (isLifeboat !== 1n) throw new Error("destination is not a registered Lifeboat account");
+  const deployments = [{ factory: s.factory!, sponsor: s.sponsor!, token: s.token! }, FIRST_DEPLOYMENT];
+  const isLifeboat = async (factory: Address) =>
+    BigInt(await call("eth_call", [{ to: factory, data: encodeFunctionData({ abi: artifact("LifeboatFactory").abi, functionName: "isLifeboat", args: [summary.lifeboat] }) }, "latest"])) === 1n;
+  let dep: (typeof deployments)[number] | undefined;
+  for (const d of deployments) if (await isLifeboat(d.factory)) { dep = d; break; }
+  if (!dep) throw new Error("destination is not a registered Lifeboat account of any known factory");
 
   const tokenText = summary.tokens.map((x) =>
-    x.token === s.token!.toLowerCase() ? `${(Number(x.amount) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2 })} dUSD` : `${x.amount} of ${x.token}`,
+    x.token === dep!.token.toLowerCase() ? `${(Number(x.amount) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2 })} dUSD` : `${x.amount} of ${x.token}`,
   );
   const record = {
     exposed: summary.exposed,
@@ -338,17 +346,22 @@ async function publish() {
     chainId: devnet.chainId,
     block: BigInt(r.blockNumber),
     txHash: m.hash,
-    sponsored: summary.sponsor === s.sponsor!.toLowerCase(),
+    sponsored: summary.sponsor === dep.sponsor.toLowerCase(),
     ethWei: summary.ethWei,
     assets: [`${fmt(summary.ethWei)} ETH`, ...tokenText].join(", "),
   };
   console.log(`  verified from tx ${m.hash.slice(0, 10)}… (block ${record.block}): ${record.assets}, sponsored ${record.sponsored}`);
 
   const key = arkivKey();
+  const listed = await readMigrations(key.address, { lifeboat: summary.lifeboat });
+  if (listed.some((row) => row.txHash.toLowerCase() === m.hash.toLowerCase())) {
+    console.log(`  already listed: entity ${listed[0]!.key}`);
+    return;
+  }
   const { entityKey, txHash } = await publishMigration(key.privateKey, record);
   console.log(`  listed on Arkiv: entity ${entityKey}`);
   console.log(`  arkiv tx ${txHash}, publisher ${key.address}`);
-  const rows = await readMigrations(key.address, { lifeboat: s.lifeboat });
+  const rows = await readMigrations(key.address, { lifeboat: summary.lifeboat });
   console.log(`  read back: ${rows.length} entr${rows.length === 1 ? "y" : "ies"} for this Lifeboat account`);
 }
 

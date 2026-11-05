@@ -8,6 +8,7 @@ import { LogPage } from "./app/LogPage.js";
 import { MovePage } from "./app/MovePage.js";
 import { QdayPage } from "./app/QdayPage.js";
 import { WalletProvider, useWallet } from "./app/wallet-context.js";
+import { saveWallet, type WalletState } from "./lib/store.js";
 
 const ROUTES = {
   "#/": "Check",
@@ -33,6 +34,20 @@ function useRoute(): Route {
   return r;
 }
 
+/** Restore a wallet from the backup file Move aboard offers. */
+function restore(file: File) {
+  void file.text().then((text) => {
+    try {
+      const s = JSON.parse(text) as WalletState;
+      if (s.v !== 1 || !/^0x[0-9a-f]{64}$/i.test(s.exposedKey) || !/^0x[0-9a-f]{64}$/i.test(s.seed)) throw new Error();
+      if (!saveWallet(s)) throw new Error();
+      location.reload();
+    } catch {
+      alert("That file isn't a Lifeboat backup.");
+    }
+  });
+}
+
 function Footer() {
   const { reset, wallet } = useWallet();
   const [sure, setSure] = useState(false);
@@ -42,6 +57,10 @@ function Footer() {
         Hash-based keys · EIP-8141 frame transactions · reads over Anon-RPC ·{" "}
         <a href="https://github.com/ramavats/lifeboat">source</a>
       </span>
+      <label className="btn quiet small" style={{ marginLeft: "auto" }}>
+        Restore a backup
+        <input type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
+      </label>
       {wallet.state.activity.length > 0 &&
         (sure ? (
           <span className="row">

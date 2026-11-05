@@ -233,3 +233,5 @@ h2 { font-weight: 500; font-size: 20px; line-height: 28px; margin: 0 0 4px; }
 }
 .grid-halves > .card { margin-top: 0; }
 .how-section .facts dd { font-family: var(--font); }
+.mempools { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.mempools h3 { font-size: 15px; font-weight: 500; }

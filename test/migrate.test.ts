@@ -21,6 +21,7 @@ describe("summarizeMigrationTx", () => {
       sponsor: "0x4b94121f0343a95c90e9fd6bb3e0d6fa7448ed0c",
       ethWei: 0xde0b6a9a4641200n,
       tokens: [{ token: "0x53af43f3d696bef8e7fb022b8a707f7103f952a0", amount: 2_400_000_000n }],
+      created: false,
     });
   });
 

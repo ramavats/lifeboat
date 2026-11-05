@@ -2,13 +2,13 @@ import type { Address } from "viem";
 
 /**
  * The public Lifeboat deployment on the ERC-8421 alt-mempool devnet (chain 1337), from
- * `pnpm devnet setup` on Nov 5, 2026. Anyone can deploy their own factory and sponsor;
+ * `pnpm devnet setup` on Nov 6, 2026 (the factory creates accounts with CREATE2). Anyone can deploy their own factory and sponsor;
  * these are just ours. If the devnet is reset, redeploy and update these four lines.
  */
 export const deployment = {
-  factory: "0xb343620fe0f4125acb960e7613ddcd7a3ce0f494" as Address,
-  sponsor: "0x4b94121f0343a95c90e9fd6bb3e0d6fa7448ed0c" as Address,
-  token: "0x53af43f3d696bef8e7fb022b8a707f7103f952a0" as Address, // dUSD, test only
+  factory: "0x0386ba72f350e5bd1a765857abcf196e423959c3" as Address,
+  sponsor: "0x7d426bc3981733b997c1c68212d5d14ee0e397c7" as Address,
+  token: "0x10b355456a9f80fb9e36257aa38dc9ec8cf585ef" as Address, // dUSD, test only
   arkivPublisher: "0x09Ad723E95ad58D9b963c93dc212fC4DfdAe3631" as Address,
   /** Where demo sends go: the devnet workshop's recipient. */
   recipient: "0x8943545177806ED17B9F23F0a21ee5948eCaa776" as Address,

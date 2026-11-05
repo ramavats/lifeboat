@@ -2,7 +2,6 @@ import * as ftx from "@forshtat/hegota-support/tx";
 import {
   bytesToHex,
   decodeErrorResult,
-  decodeEventLog,
   encodeFunctionData,
   hexToBytes,
   type Abi,
@@ -129,35 +128,29 @@ export class Wallet {
 
   // ---------------------------------------------------------------- moving aboard
 
-  /** Create the Lifeboat account for these quantum-safe keys. Paid by the exposed account today. */
-  async createLifeboat(): Promise<Address> {
-    if (this.state.lifeboat) return this.state.lifeboat;
+  /** The address the factory will create this wallet's Lifeboat account at (CREATE2). */
+  async predictLifeboat(): Promise<Address> {
     const kp = this.requireKeys();
-    const h = await sendLegacy(this.state.exposedKey, {
-      to: deployment.factory,
-      data: encodeFunctionData({
-        abi: LifeboatFactoryAbi as Abi,
-        functionName: "create",
-        args: [this.exposedAddress, bytesToHex(kp.pub.pubSeed), bytesToHex(kp.pub.root), BigInt(KEY_TREE_HEIGHT)],
-      }),
-      gas: devnet.deployGasLimit,
-    });
-    const r = await waitReceipt(h);
-    if (r.status !== "0x1") throw new Error("creating the Lifeboat account failed");
-    for (const log of r.logs) {
-      try {
-        const ev = decodeEventLog({ abi: LifeboatFactoryAbi as Abi, data: log.data, topics: log.topics }) as any;
-        if (ev.eventName === "Created") this.state.lifeboat = ev.args.account;
-      } catch {}
-    }
-    if (!this.state.lifeboat) throw new Error("factory did not report the new account");
-    this.persist("Created the Lifeboat account", h);
-    return this.state.lifeboat;
+    const out = (await call("eth_call", [
+      {
+        to: deployment.factory,
+        data: encodeFunctionData({
+          abi: LifeboatFactoryAbi as Abi,
+          functionName: "predict",
+          args: [this.exposedAddress, bytesToHex(kp.pub.pubSeed), bytesToHex(kp.pub.root), BigInt(KEY_TREE_HEIGHT)],
+        }),
+      },
+      "latest",
+    ])) as Hex;
+    return `0x${out.slice(26)}` as Address;
   }
 
   /** One sponsored, atomic transaction: everything the exposed account holds moves aboard. */
-  async migrate(): Promise<Hex> {
-    const lifeboat = await this.createLifeboat();
+  /** Build and sign this wallet's migration exactly as migrate() would send it. */
+  private async signedMigration(): Promise<{ tx: ftx.FrameTx; lifeboat: Address; exists: boolean }> {
+    const kp = this.requireKeys();
+    const lifeboat = await this.predictLifeboat();
+    const exists = (await call("eth_getCode", [lifeboat, "latest"])) !== "0x";
     const a = this.exposedAddress;
     const [eth, dusd, nonce] = await Promise.all([balanceOf(a), tokenBalance(a), nonceOf(a)]);
     const t = buildMigrationTx({
@@ -167,11 +160,35 @@ export class Wallet {
       nonce,
       eth,
       tokens: dusd > 0n ? [{ token: deployment.token, amount: dusd }] : [],
+      // A new account is created inside the same sponsored transaction: nothing to pay up front.
+      create: exists ? undefined : { factory: deployment.factory, pubSeed: bytesToHex(kp.pub.pubSeed), root: bytesToHex(kp.pub.root), height: BigInt(KEY_TREE_HEIGHT) },
     });
-    const signed = await ftx.signTx(profile, t, this.state.exposedKey, 0);
+    return { tx: await ftx.signTx(profile, t, this.state.exposedKey, 0), lifeboat, exists };
+  }
+
+  /**
+   * Send the very same signed migration to Ethereum's ordinary (canonical) mempool. It rejects
+   * it, because the sponsor reads another contract's storage during validation; a rejection
+   * changes nothing onchain, so the real move can follow through the alt mempool.
+   */
+  async tryPublicMempool(): Promise<{ accepted: boolean; message: string }> {
+    const { tx } = await this.signedMigration();
+    try {
+      const h = await call("eth_sendRawTransaction", [ftx.encodeTx(profile, tx)]);
+      return { accepted: true, message: `accepted as ${h}` };
+    } catch (e) {
+      const msg = (e as Error).message;
+      return { accepted: false, message: msg.includes("StorageReadNonSender") ? "StorageReadNonSender" : msg };
+    }
+  }
+
+  async migrate(): Promise<Hex> {
+    const { tx: signed, lifeboat, exists } = await this.signedMigration();
+    this.state.lifeboat = lifeboat;
+    saveWallet(this.state);
     const { hash, block } = await submit(signed);
     this.state.migration = { hash, block: block.toString() };
-    this.persist("Moved everything aboard (gas paid by the sponsor)", hash);
+    this.persist(exists ? "Moved everything aboard (gas paid by the sponsor)" : "Created the account and moved everything aboard (all gas paid by the sponsor)", hash);
     return hash;
   }
 
@@ -202,6 +219,22 @@ export class Wallet {
 
   enablePqOnly() {
     return this.spend(calldata.enablePqOnly(), "Switched to quantum-safe only");
+  }
+
+  /**
+   * Move to a fresh tree of one-time keys. The rotation itself is signed with the current tree;
+   * once it lands, the new seed and an empty journal replace the old ones (old keys are spent).
+   */
+  async rotate(next: { seed: Hex; kp: KeyPair }) {
+    const { hash } = await this.spend(
+      calldata.rotateKeys(bytesToHex(next.kp.pub.pubSeed), bytesToHex(next.kp.pub.root), BigInt(next.kp.pub.height)),
+      "Rotated to a fresh key tree",
+    );
+    this.state.seed = next.seed;
+    this.state.journal = {};
+    this.kp = next.kp;
+    saveWallet(this.state);
+    return hash;
   }
 
   /** The newest transaction this account sent itself (its signatures are public onchain). */
