@@ -28,6 +28,7 @@
     "@anon-rpc/browser-harness": "0.4.0",
     "@arkiv-network/sdk": "1.0.1",
     "@forshtat/hegota-support": "0.0.1",
+    "@lucasmarkes/hairline": "0.5.1",
     "@noble/hashes": "^2.4.0",
     "viem": "^2.57.16"
   },

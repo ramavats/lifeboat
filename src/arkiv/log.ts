@@ -4,6 +4,7 @@ import { desc, eq } from "@arkiv-network/sdk/query";
 import { addr, bool, defineSchema, str, u256, u64 } from "@arkiv-network/sdk/schema";
 import { http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { env } from "../frame/devnet.js";
 
 /**
  * The public migration log: one Arkiv entity per completed, opted-in Lifeboat migration.
@@ -37,7 +38,7 @@ export interface MigrationRecord {
   assets: string;
 }
 
-export const arkivChain = () => rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" });
+export const arkivChain = () => rabdi({ accessKey: env("ARKIV_ACCESS_KEY") ?? "" });
 
 export function arkivReader() {
   return createPublicClient({ chain: arkivChain(), transport: http() });

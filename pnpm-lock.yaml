@@ -175,6 +175,9 @@ importers:
       '@forshtat/hegota-support':
         specifier: 0.0.1
         version: 0.0.1(solc@0.8.28(debug@4.4.3))(viem@2.57.16(typescript@7.0.2))
+      '@lucasmarkes/hairline':
+        specifier: 0.5.1
+        version: 0.5.1
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
@@ -439,6 +442,14 @@ packages:
 
   '@kpstreams/webrtc-client@0.2.1':
     resolution: {integrity: sha512-B4o0mN6QmSblhfaKy74xezV82LaIqp6tdZ05HBAuBV2sSw9wFsT3TY6xmMJeHOECWVwFJGnSit9k0RV6HnPPBw==}
+
+  '@lucasmarkes/hairline@0.5.1':
+    resolution: {integrity: sha512-zjY3bdMC3As/+enKitZ1X+D1HjpesQiAKzG1sbCFsOrb5xIuJEoepkJTBIO4jmFh6JXOQlGGylhV71nr9ipNpQ==}
+    peerDependencies:
+      react: '>=18'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@noble/ciphers@1.3.0':
     resolution: {integrity: sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==}
@@ -1266,6 +1277,8 @@ snapshots:
   '@kpstreams/webrtc-client@0.2.1':
     dependencies:
       '@kpstreams/core': 0.2.1
+
+  '@lucasmarkes/hairline@0.5.1': {}
 
   '@noble/ciphers@1.3.0': {}
 

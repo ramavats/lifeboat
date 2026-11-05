@@ -2,14 +2,12 @@ import * as tx from "@forshtat/hegota-support/tx";
 import { toWire } from "@forshtat/hegota-support/rpc";
 import type { FrameTx } from "@forshtat/hegota-support/tx";
 import { bytesToHex, encodeFunctionData, hexToBytes, type Abi, type Address, type Hex } from "viem";
-import { readFileSync } from "node:fs";
+import { LifeboatAccountAbi } from "../abi.js";
 import { Journal } from "../pq/journal.js";
 import type { KeyPair } from "../pq/xmss.js";
 import { call, devnet, profile } from "./devnet.js";
 
-export const lifeboatAbi = JSON.parse(
-  readFileSync(new URL("../../out/LifeboatAccount.json", import.meta.url), "utf8"),
-).abi as Abi;
+export const lifeboatAbi = LifeboatAccountAbi as Abi;
 
 export type Mode = "HYBRID" | "PQ_ONLY";
 

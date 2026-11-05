@@ -3,10 +3,15 @@ import { rpc } from "@forshtat/hegota-support/rpc";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 
+/** process.env in Node, nothing in the browser. */
+export function env(name: string): string | undefined {
+  return typeof process !== "undefined" ? process.env?.[name] : undefined;
+}
+
 /** The public ERC-8421 alt-mempool devnet (verified live Nov 5, 2026). */
 export const devnet = {
   chainId: 1337,
-  gatewayUrl: process.env.LIFEBOAT_GATEWAY ?? "https://altmempoolgateway.forshtat.com/rpc",
+  gatewayUrl: env("LIFEBOAT_GATEWAY") ?? "https://altmempoolgateway.forshtat.com/rpc",
   explorerUrl: "https://explorer.altmempool.wtf/",
   stakingRegistry: "0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f" as Address,
   // Devnet minStake is 0.01 ETH; stake a little above it.
