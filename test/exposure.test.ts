@@ -27,7 +27,8 @@ describe("checkExposure", () => {
     const e = await checkExposure(rpc, A);
     expect(e).toMatchObject({ status: "exposed", kind: "eoa", nonce: 214n, chainId: 1, reads: 5 });
     expect(e.why).toContain("214 transactions");
-    expect(seen).toEqual(["eth_blockNumber", "eth_chainId", "eth_getTransactionCount", "eth_getBalance", "eth_getCode"]);
+    expect(seen[0]).toBe("eth_blockNumber");
+    expect([...seen].sort()).toEqual(["eth_blockNumber", "eth_chainId", "eth_getBalance", "eth_getCode", "eth_getTransactionCount"]);
   });
 
   it("an EOA that never signed is not exposed", async () => {

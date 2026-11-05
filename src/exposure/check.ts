@@ -58,10 +58,18 @@ export async function checkExposure(rpc: RpcClient, address: string): Promise<Ex
   // Pin every read to one block so the answers agree with each other.
   const block = BigInt(await rpc.request("eth_blockNumber"));
   const tag = `0x${block.toString(16)}`;
-  const chainId = Number(BigInt(await rpc.request("eth_chainId")));
-  const nonce = BigInt(await rpc.request("eth_getTransactionCount", [address, tag]));
-  const balanceWei = BigInt(await rpc.request("eth_getBalance", [address, tag]));
-  const code = (await rpc.request("eth_getCode", [address, tag])).toLowerCase();
+  // Over Anon-RPC each read is its own circuit and TLS session (~1 s on Tor), so run the
+  // four block-pinned reads in parallel rather than one after another.
+  const [chainIdHex, nonceHex, balanceHex, codeHex] = await Promise.all([
+    rpc.request("eth_chainId"),
+    rpc.request("eth_getTransactionCount", [address, tag]),
+    rpc.request("eth_getBalance", [address, tag]),
+    rpc.request("eth_getCode", [address, tag]),
+  ]);
+  const chainId = Number(BigInt(chainIdHex));
+  const nonce = BigInt(nonceHex);
+  const balanceWei = BigInt(balanceHex);
+  const code = codeHex.toLowerCase();
 
   const base = { address, chainId, block, nonce, balanceWei, reads: rpc.reads - before };
 
