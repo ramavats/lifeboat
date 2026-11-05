@@ -154,7 +154,8 @@ something only the alt mempool allows.
 Completed migrations can be listed on a public log on Arkiv's Rabdi testnet (chain 7794095).
 Listing is **opt-in**, and the migration never depends on it.
 - **What's logged:** only completed migrations, and only facts already public onchain. Every
-  field is re-read from the devnet at the migration's block before publishing.
+  field is derived from the mined migration transaction's own frames and receipt before
+  publishing.
 - **What's never logged:** exposure checks, keys, IPs.
 - **Why:** the devnet can be reset and its explorer keeps history in memory only. The log
   keeps a durable record that anyone can query without us.
@@ -163,6 +164,9 @@ Readers trust only entries owned by the deployment's publisher wallet. Schema an
 [`arkiv/`](arkiv/).
 
 - Publisher wallet: `0x09Ad723E95ad58D9b963c93dc212fC4DfdAe3631`
+- First entry: `0x2bf86f4fb65770ebc7a4da64ad7c51ebc43ac6244597cae2ef7da865a9dbaf38`
+  (Arkiv tx `0x745669bc99016628f112f6ed605ca795a19822cd19e7d140941da117b14f6c07`): the
+  sponsored migration above, 1.0000 ETH + 2,400.00 dUSD
 - One query you can run:
 
 ```ts

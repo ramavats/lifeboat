@@ -78,3 +78,48 @@ export function buildMigrationTx(p: MigrationPlan): FrameTx {
     fees: { maxFeePerGas: devnet.maxFeePerGasWei },
   });
 }
+
+/** What a mined migration transaction moved, read from its own frames (no historical state needed). */
+export interface MigrationSummary {
+  exposed: Address;
+  lifeboat: Address;
+  sponsor: Address | null;
+  ethWei: bigint;
+  tokens: { token: Address; amount: bigint }[];
+}
+
+const TRANSFER_SELECTOR = "0xa9059cbb";
+const SPONSOR_SELECTOR = "0x766c4f37"; // sponsor(address)
+
+/**
+ * Parse a frame transaction as returned by eth_getTransactionByHash on the devnet node and
+ * check it has the migration shape. Throws if any SENDER frame moves value anywhere but the
+ * Lifeboat account, the same rule the sponsor enforces during validation.
+ */
+export function summarizeMigrationTx(t: {
+  sender: string;
+  frames: { mode: string; to: string | null; value: string; data: string }[];
+}): MigrationSummary {
+  const exposed = t.sender.toLowerCase() as Address;
+  const sponsorFrame = t.frames.find((f) => Number(f.mode) === 1 && f.data.toLowerCase().startsWith(SPONSOR_SELECTOR));
+  if (!sponsorFrame) throw new Error("no sponsor(lifeboat) VERIFY frame: not a sponsored migration");
+  const lifeboat = `0x${sponsorFrame.data.slice(2 + 8 + 24, 2 + 8 + 64)}`.toLowerCase() as Address;
+
+  let ethWei = 0n;
+  const tokens: { token: Address; amount: bigint }[] = [];
+  for (const f of t.frames.filter((f) => Number(f.mode) === 2)) {
+    const to = (f.to ?? exposed).toLowerCase() as Address;
+    const data = f.data.toLowerCase();
+    if (data === "0x") {
+      if (to !== lifeboat) throw new Error(`ETH frame pays ${to}, not the Lifeboat account`);
+      ethWei += BigInt(f.value);
+    } else if (data.startsWith(TRANSFER_SELECTOR) && data.length === 2 + 8 + 128) {
+      const recipient = `0x${data.slice(2 + 8 + 24, 2 + 8 + 64)}` as Address;
+      if (recipient !== lifeboat) throw new Error(`token frame pays ${recipient}, not the Lifeboat account`);
+      tokens.push({ token: to, amount: BigInt(`0x${data.slice(2 + 8 + 64)}`) });
+    } else {
+      throw new Error("a SENDER frame is neither an ETH move nor transfer(lifeboat, amount)");
+    }
+  }
+  return { exposed, lifeboat, sponsor: (sponsorFrame.to?.toLowerCase() as Address) ?? null, ethWei, tokens };
+}

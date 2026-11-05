@@ -35,4 +35,20 @@ Written while building, Nov 5, 2026. SDK `@arkiv-network/sdk@1.0.1`, Node 26, Ra
    real types. The README walks from schema to query without detours, and reads worked
    immediately against the public endpoint with no key.
 
-_More entries will be added after the first writes._
+7. **First write worked first time.** `createEntity` with `ExpirationTime.max()` landed and
+   read back through `select().from(Migrations).where(eq("lifeboat", …)).ownedBy(…)` with no
+   changes. It cost 0.000507 tGLM. One gap: the faucet sent 10 tGLM and nothing in the SDK or
+   hub said what a typical write costs, so we couldn't tell up front whether that was
+   enough for one entity or ten thousand. A line like "a ~1 KB entity costs about X tGLM" in
+   the README would answer it.
+
+8. **The public endpoint printed a rate-limit notice on every run, but never limited us.**
+   We made a handful of reads and one write without an access key and saw no throttling. The
+   notice is useful, but it doesn't say what the limit *is*, so it's hard to judge whether a
+   demo will survive a judge clicking around. Publishing the public endpoint's limits
+   (requests/minute) would help.
+
+_Not Arkiv's issue, but worth knowing:_ our source chain (the EIP-8141 devnet) keeps no
+historical state, so we derive the published facts from the migration transaction itself,
+not from balances at its block. That turned out stronger: the record says exactly what the
+transaction moved.

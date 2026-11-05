@@ -11,7 +11,7 @@ its assets into a quantum-safe Lifeboat account. Defined in [`src/arkiv/log.ts`]
 | `block` | u64 | yes | Block the migration landed in; the log is sorted by it |
 | `txHash` | str | yes | The migration transaction (lowercase hex) |
 | `sponsored` | bool | yes | Whether the MigrationSponsor paid the gas |
-| `ethWei` | u256 | no | ETH the Lifeboat account held right after the migration |
+| `ethWei` | u256 | no | ETH the migration moved, read from the tx's own frames |
 | `assets` | str | no | Human summary, e.g. `1.0000 ETH, 2,400.00 dUSD` |
 
 The named schema also tags each entity with `arkiv.schema = "lifeboat.migration.v1"`.

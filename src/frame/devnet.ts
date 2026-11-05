@@ -19,9 +19,20 @@ export const devnet = {
 
 export const profile = getProfile("ethrex-eip8141-tracer");
 
-export const call = (method: string, params: unknown[] = []) => rpc(devnet.gatewayUrl, method, params);
-
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** JSON-RPC to the gateway. Retries transport failures (the devnet has brief outages), never node errors. */
+export async function call(method: string, params: unknown[] = [], retries = 4): Promise<any> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await rpc(devnet.gatewayUrl, method, params);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (attempt >= retries || (code !== "RPC_UNREACHABLE" && code !== "RPC_BAD_RESPONSE")) throw e;
+      await sleep(1500 * 2 ** attempt);
+    }
+  }
+}
 
 export async function balanceOf(a: Address): Promise<bigint> {
   return BigInt(await call("eth_getBalance", [a, "latest"]));

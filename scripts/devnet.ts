@@ -32,7 +32,7 @@ import { Journal } from "../src/pq/journal.js";
 import { keygen, type KeyPair } from "../src/pq/xmss.js";
 import { balanceOf, call, devnet, faucet, nonceOf, profile, sendLegacy, waitReceipt } from "../src/frame/devnet.js";
 import { buildTx, calldata, readState, send, signTx, type Mode } from "../src/frame/lifeboat.js";
-import { buildMigrationTx } from "../src/frame/migrate.js";
+import { buildMigrationTx, summarizeMigrationTx } from "../src/frame/migrate.js";
 import { publishMigration, readMigrations } from "../src/arkiv/log.js";
 import { arkivKey } from "./arkiv-key.js";
 
@@ -309,41 +309,44 @@ async function sponsorChecks() {
 }
 
 /**
- * Opt-in: publish the completed migration to the public Arkiv log. Every field is re-read from
- * the devnet at the migration's block, so the log can only say what the chain proves.
+ * Opt-in: publish the completed migration to the public Arkiv log. Every field comes from the
+ * devnet: the mined migration transaction's own frames, its receipt, and the factory registry.
+ * (The devnet node keeps no historical state, so we read what the tx moved, not old balances.)
  */
 async function publish() {
   const s = load();
   const m = s.log.find((l) => l.step === "migrate");
   if (!m || !s.lifeboat) throw new Error("no completed migration to publish");
-  const exposed = addr(s.exposedKey);
 
   const r = await waitReceipt(m.hash);
-  if (r.status !== "0x1") throw new Error("migration tx did not succeed");
-  const tag = r.blockNumber as Hex;
-  const read = async (to: Address, abi: Abi, fn: string, args: unknown[], block: Hex | "latest" = "latest") =>
-    BigInt(await call("eth_call", [{ to, data: encodeFunctionData({ abi, functionName: fn, args }) }, block]));
-  const isLifeboat = await read(s.factory!, artifact("LifeboatFactory").abi, "isLifeboat", [s.lifeboat]);
-  const sponsored = await read(s.sponsor!, artifact("MigrationSponsor").abi, "sponsored", [exposed]);
+  const failed = (r.frameReceipts ?? []).some((f: any) => f.status !== "0x1");
+  if (r.status !== "0x1" || failed) throw new Error("migration tx did not fully succeed");
+  const t = await call("eth_getTransactionByHash", [m.hash]);
+  const summary = summarizeMigrationTx(t);
+  if (summary.lifeboat !== s.lifeboat.toLowerCase()) throw new Error("tx moved funds into a different account");
+
+  const isLifeboat = BigInt(await call("eth_call", [{ to: s.factory!, data: encodeFunctionData({ abi: artifact("LifeboatFactory").abi, functionName: "isLifeboat", args: [summary.lifeboat] }) }, "latest"]));
   if (isLifeboat !== 1n) throw new Error("destination is not a registered Lifeboat account");
 
-  const ethWei = BigInt(await call("eth_getBalance", [s.lifeboat, tag]));
-  const dusd = await read(s.token!, erc20, "balanceOf", [s.lifeboat], tag);
+  const tokenText = summary.tokens.map((x) =>
+    x.token === s.token!.toLowerCase() ? `${(Number(x.amount) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2 })} dUSD` : `${x.amount} of ${x.token}`,
+  );
   const record = {
-    exposed,
-    lifeboat: s.lifeboat,
+    exposed: summary.exposed,
+    lifeboat: summary.lifeboat,
     chainId: devnet.chainId,
-    block: BigInt(tag),
+    block: BigInt(r.blockNumber),
     txHash: m.hash,
-    sponsored: sponsored === 1n,
-    ethWei,
-    assets: `${fmt(ethWei)} ETH, ${Number(dusd / 1_000_000n).toLocaleString("en-US")}.00 dUSD`,
+    sponsored: summary.sponsor === s.sponsor!.toLowerCase(),
+    ethWei: summary.ethWei,
+    assets: [`${fmt(summary.ethWei)} ETH`, ...tokenText].join(", "),
   };
-  console.log(`  verified on the devnet at block ${record.block}: ${record.assets}, sponsored ${record.sponsored}`);
+  console.log(`  verified from tx ${m.hash.slice(0, 10)}… (block ${record.block}): ${record.assets}, sponsored ${record.sponsored}`);
 
   const key = arkivKey();
   const { entityKey, txHash } = await publishMigration(key.privateKey, record);
-  console.log(`  listed on Arkiv: entity ${entityKey} (tx ${txHash}), publisher ${key.address}`);
+  console.log(`  listed on Arkiv: entity ${entityKey}`);
+  console.log(`  arkiv tx ${txHash}, publisher ${key.address}`);
   const rows = await readMigrations(key.address, { lifeboat: s.lifeboat });
   console.log(`  read back: ${rows.length} entr${rows.length === 1 ? "y" : "ies"} for this Lifeboat account`);
 }

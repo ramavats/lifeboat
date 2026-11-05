@@ -19,7 +19,8 @@
 - **Exposure checks.** They go through Anon-RPC precisely so nobody learns who looked up which
   address. Logging them anywhere would undo that.
 - **Keys and the one-time-key journal.** They stay on the user's device.
-- **Anything not already public onchain.** Every field is re-read from the devnet at the
-  migration's block before publishing (`pnpm devnet publish`), so the log can't say more
-  than the chain proves.
+- **Anything not already public onchain.** Before publishing (`pnpm devnet publish`), every
+  field is derived from the devnet itself: the mined migration transaction's frames (who, into
+  which account, how much ETH, which `transfer`s), its receipt (all frames succeeded), and the
+  factory registry. The log can't say more than the chain proves.
 - **Migrations the user didn't opt into.** Publishing is a separate, explicit step.
