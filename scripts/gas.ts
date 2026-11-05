@@ -16,4 +16,4 @@ for (let i = 0; i < 16; i++) {
   gas.push(g);
 }
 const avg = gas.reduce((a, b) => a + b, 0n) / BigInt(gas.length);
-console.log(`verify gas over 16 sigs: min ${gas.reduce((a, b) => (b < a ? b : a))} avg ${avg} max ${gas.reduce((a, b) => (b > a ? b : a))}; sig size ${4 + 67 * 32 + 10 * 32} bytes`);
+console.log(`verify gas over 16 sigs: min ${gas.reduce((a, b) => (b < a ? b : a))} avg ${avg} max ${gas.reduce((a, b) => (b > a ? b : a))}; sig size ${8 + 128 * 32 + 10 * 32} bytes`);

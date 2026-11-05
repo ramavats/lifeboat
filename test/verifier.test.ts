@@ -30,7 +30,7 @@ describe("XmssVerifier.sol matches the TypeScript signer", () => {
     const sig = signRaw(kp, 3, msg("a"));
     expect((await verifyOnchain(kp, msg("b"), sig)).out[0]).toBe(false);
 
-    for (const pos of [5, 4 + 66 * 32 + 7, sig.length - 1]) {
+    for (const pos of [5, 8 + 127 * 32 + 7, sig.length - 1]) {
       const bad = sig.slice();
       bad[pos]! ^= 0x80;
       expect((await verifyOnchain(kp, msg("a"), bad)).out[0], `byte ${pos}`).toBe(false);

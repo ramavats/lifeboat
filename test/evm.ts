@@ -26,7 +26,7 @@ export class Deployed {
   constructor(private evm: EVM, private caller: Address, public address: Address, private abi: Abi) {}
 
   /** Static-style call. Returns decoded outputs and the execution gas (excludes the 21k base and calldata). */
-  async call(functionName: string, args: unknown[]) {
+  async call(functionName: string, args: unknown[]): Promise<{ out: any; gas: bigint }> {
     const data = encodeFunctionData({ abi: this.abi, functionName, args });
     const res = await this.evm.runCall({ caller: this.caller, to: this.address, data: hexToBytes(data), gasLimit: 30_000_000n });
     if (res.execResult.exceptionError) throw new Error(`call ${functionName} reverted: ${res.execResult.exceptionError.error}`);

@@ -59,6 +59,10 @@ export const leafHash = (pubSeed: Uint8Array, leaf: number, pk: Uint8Array) =>
 export const nodeHash = (pubSeed: Uint8Array, height: number, index: number, l: Uint8Array, r: Uint8Array) =>
   keccak_256(concat(pubSeed, adrs(TAG_NODE, 0, height, index), l, r));
 
-/** The 32 bytes WOTS actually signs: a domain-separated digest of the tx's sigHash. */
-export const messageDigest = (pubSeed: Uint8Array, sigHash: Uint8Array) =>
-  keccak_256(concat(pubSeed, adrs(TAG_MSG, 0, 0, 0), sigHash));
+/**
+ * The 32 bytes WOTS+C actually signs: keccak(pubSeed ‖ adrs(TAG_MSG, leaf, counter) ‖ sigHash).
+ * The counter is what the signer grinds to hit the target digit sum; binding the leaf keeps a
+ * grind for one key from being reused under another.
+ */
+export const messageDigest = (pubSeed: Uint8Array, leaf: number, counter: number, sigHash: Uint8Array) =>
+  keccak_256(concat(pubSeed, adrs(TAG_MSG, leaf, 0, counter), sigHash));

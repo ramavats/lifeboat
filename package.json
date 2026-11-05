@@ -5,7 +5,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build:contracts": "tsx scripts/compile.ts"
+    "build:contracts": "tsx scripts/compile.ts",
+    "devnet": "tsx scripts/devnet.ts"
   },
   "author": "",
   "license": "MIT",

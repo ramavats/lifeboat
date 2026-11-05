@@ -1,20 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { Journal } from "../src/pq/journal.js";
-import { sigLength } from "../src/pq/params.js";
-import { digits } from "../src/pq/wots.js";
-import { keygen, signRaw, verify } from "../src/pq/xmss.js";
+import { TARGET_SUM, sigLength } from "../src/pq/params.js";
+import { digitSum, digits } from "../src/pq/wots.js";
+import { grind, keygen, signRaw, verify } from "../src/pq/xmss.js";
 
 const seed = keccak_256(new TextEncoder().encode("lifeboat test seed"));
 const kp = keygen(seed, 3); // 8 leaves keeps the test fast
 const msg = (s: string) => keccak_256(new TextEncoder().encode(s));
 
-describe("WOTS digits", () => {
-  it("has 64 message digits plus a 3-digit checksum", () => {
-    const d = digits(new Uint8Array(32)); // all zero → checksum 960 = 0x3c0
-    expect(d).toHaveLength(67);
-    expect(d.slice(64)).toEqual([3, 12, 0]);
-    expect(digits(new Uint8Array(32).fill(0xff)).slice(64)).toEqual([0, 0, 0]);
+describe("WOTS+C digits", () => {
+  it("splits 32 bytes into 128 base-4 digits, most significant first", () => {
+    const m = new Uint8Array(32);
+    m[0] = 0b11_10_01_00;
+    const d = digits(m);
+    expect(d).toHaveLength(128);
+    expect(d.slice(0, 4)).toEqual([3, 2, 1, 0]);
+    expect(digitSum(digits(new Uint8Array(32).fill(0xff)))).toBe(384);
+  });
+
+  it("grinds a counter so the digest digits hit the target sum", () => {
+    const { counter, msg: m } = grind(kp.pub.pubSeed, 0, msg("x"));
+    expect(digitSum(digits(m))).toBe(TARGET_SUM);
+    expect(counter).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -38,7 +46,7 @@ describe("XMSS-lite", () => {
 
   it("rejects any flipped byte", () => {
     const sig = signRaw(kp, 5, msg("a"));
-    for (const pos of [0, 3, 4, 100, 4 + 67 * 32 - 1, sig.length - 1]) {
+    for (const pos of [0, 3, 4, 7, 100, 8 + 128 * 32 - 1, sig.length - 1]) {
       const bad = sig.slice();
       bad[pos]! ^= 1;
       expect(verify(kp.pub, msg("a"), bad).ok, `byte ${pos}`).toBe(false);
