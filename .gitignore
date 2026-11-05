@@ -2,7 +2,7 @@ node_modules
 .env
 *.log
 out/
-.lifeboat-state.json
+.lifeboat-state*.json
 
 # Private working notes (not for the repo)
 .memory/
