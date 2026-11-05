@@ -33,7 +33,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { Journal } from "../src/pq/journal.js";
 import { keygen, type KeyPair } from "../src/pq/xmss.js";
 import { balanceOf, call, devnet, faucet, nonceOf, profile, sendLegacy, waitReceipt } from "../src/frame/devnet.js";
-import { buildTx, calldata, readState, send, signTx, type Mode } from "../src/frame/lifeboat.js";
+import { buildTx, calldata, readState, send, signTx, waitFrameTx, type Mode } from "../src/frame/lifeboat.js";
 import { buildMigrationTx, summarizeMigrationTx } from "../src/frame/migrate.js";
 import { publishMigration, readMigrations } from "../src/arkiv/log.js";
 import { arkivKey } from "./arkiv-key.js";
@@ -138,7 +138,7 @@ async function submit(s: State, step: string, t: ftx.FrameTx, note?: string): Pr
   console.log(`  admitted: ${hash}`);
   s.log.push({ step, hash, note });
   save(s);
-  const r = await waitReceipt(hash);
+  const r = await waitFrameTx(t, hash);
   console.log(`  mined in block ${BigInt(r.blockNumber)}, status ${r.status}, frames ${JSON.stringify((r.frameReceipts ?? []).map((f: any) => f.status))}`);
   if (r.status !== "0x1") throw new Error(`${step} tx failed onchain`);
   return hash;

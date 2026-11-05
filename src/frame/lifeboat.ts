@@ -92,5 +92,30 @@ export async function signTx(
 }
 
 export const send = (t: FrameTx): Promise<Hex> => call("eth_sendFrameTransaction", [toWire(t)]);
+
+/**
+ * Wait for a frame tx admitted by the alt mempool. If the alt mempool's relayer hasn't moved it
+ * within `fallbackMs`, offer the very same signed bytes to the node's own (canonical) mempool:
+ * Lifeboat account txs qualify there (own storage only, under the 100k budget), so they still
+ * land. A sponsored migration doesn't qualify; the canonical mempool refuses it and we keep
+ * waiting on the alt mempool. Same bytes, same hash: never a second, different signature.
+ */
+export async function waitFrameTx(t: FrameTx, hash: Hex, opts: { fallbackMs?: number; timeoutMs?: number } = {}): Promise<any> {
+  const fallbackMs = opts.fallbackMs ?? 45_000, end = Date.now() + (opts.timeoutMs ?? 180_000);
+  let offered = false;
+  const start = Date.now();
+  while (Date.now() < end) {
+    const r = await call("eth_getTransactionReceipt", [hash]);
+    if (r) return r;
+    if (!offered && Date.now() - start > fallbackMs) {
+      offered = true;
+      await call("eth_sendRawTransaction", [encodeRawTx(t)]).catch(() => undefined);
+    }
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+  throw new Error(`tx ${hash} not mined within ${Math.round((opts.timeoutMs ?? 180_000) / 1000)}s`);
+}
+
+const encodeRawTx = (t: FrameTx): Hex => tx.encodeTx(profile, t);
 export const estimate = (t: FrameTx) => call("eth_estimateFrameTransactionGas", [toWire(t)]);
 export const status = (hash: Hex) => call("skandha_frameTransactionStatus", [hash]);

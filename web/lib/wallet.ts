@@ -11,7 +11,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { DemoTokenAbi, LifeboatAccountAbi, LifeboatFactoryAbi, MigrationSponsorAbi } from "../../src/abi.js";
 import { balanceOf, call, devnet, faucet, nonceOf, profile, sendLegacy, waitReceipt } from "../../src/frame/devnet.js";
-import { buildTx, calldata, readState, send, signTx, type Mode } from "../../src/frame/lifeboat.js";
+import { buildTx, calldata, readState, send, signTx, waitFrameTx, type Mode } from "../../src/frame/lifeboat.js";
 import { buildMigrationTx } from "../../src/frame/migrate.js";
 import { Journal } from "../../src/pq/journal.js";
 import type { KeyPair } from "../../src/pq/xmss.js";
@@ -57,7 +57,7 @@ async function submit(t: ftx.FrameTx): Promise<{ hash: Hex; block: bigint }> {
     const data = msg.match(/reverted with data (0x[0-9a-fA-F]+)/)?.[1] as Hex | undefined;
     throw new RejectedError(msg, data ? decodeRevert(data) : null);
   }
-  const r = await waitReceipt(hash);
+  const r = await waitFrameTx(t, hash);
   if (r.status !== "0x1") throw new Error(`transaction ${hash} failed onchain`);
   return { hash, block: BigInt(r.blockNumber) };
 }
