@@ -11,7 +11,11 @@ export function env(name: string): string | undefined {
 /** The public ERC-8421 alt-mempool devnet (verified live Nov 5, 2026). */
 export const devnet = {
   chainId: 1337,
-  gatewayUrl: env("LIFEBOAT_GATEWAY") ?? "https://altmempoolgateway.forshtat.com/rpc",
+  // The main alt-mempool node. (The workshop's gateway node, altmempoolgateway.forshtat.com,
+  // stopped relaying for over an hour on Nov 6 without gossiping to this one; this one kept going.)
+  gatewayUrl: env("LIFEBOAT_GATEWAY") ?? "https://altmempool.forshtat.com/rpc",
+  /** Only the workshop gateway runs the devnet faucet. */
+  faucetUrl: env("LIFEBOAT_FAUCET") ?? "https://altmempoolgateway.forshtat.com/rpc",
   explorerUrl: "https://explorer.altmempool.wtf/",
   stakingRegistry: "0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f" as Address,
   // Devnet minStake is 0.01 ETH; stake a little above it.
@@ -104,7 +108,7 @@ export async function sendLegacy(key: Hex, tx: LegacyTx): Promise<Hex> {
 
 /** The devnet faucet: 1 ETH, once an hour per address. */
 export async function faucet(to: Address): Promise<Hex> {
-  const { txHash } = await call("skandha_explorer_faucet", [to]);
+  const { txHash } = await rpc(devnet.faucetUrl, "skandha_explorer_faucet", [to]);
   const r = await waitReceipt(txHash);
   if (r.status !== "0x1") throw new Error(`faucet transfer ${txHash} reverted`);
   return txHash;

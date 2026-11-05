@@ -31,7 +31,7 @@ export function MovePage() {
   const step = !exposed ? 1 : !keysReady ? 2 : !backedUp && !moved ? 3 : !moved ? 5 : 6;
   const st = (n: number) => (n < step ? "done" : n === step ? "active" : "todo");
 
-  const faucetEmpty = !!error && /faucet is empty/i.test(error);
+  const faucetEmpty = !!error && /faucet is (empty|disabled)/i.test(error);
   // When the faucet is dry, someone sends ETH by hand: watch for it to arrive.
   useEffect(() => {
     if (funded || !faucetEmpty) return;
