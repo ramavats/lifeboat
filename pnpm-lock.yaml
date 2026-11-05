@@ -169,6 +169,9 @@ importers:
       '@anon-rpc/browser-harness':
         specifier: 0.4.0
         version: 0.4.0
+      '@arkiv-network/sdk':
+        specifier: 1.0.1
+        version: 1.0.1(typescript@7.0.2)(viem@2.57.16(typescript@7.0.2))
       '@forshtat/hegota-support':
         specifier: 0.0.1
         version: 0.0.1(solc@0.8.28(debug@4.4.3))(viem@2.57.16(typescript@7.0.2))
@@ -214,6 +217,16 @@ packages:
 
   '@anon-rpc/harness-core@0.4.0':
     resolution: {integrity: sha512-ZFVeE0tkUgXPw1qu99s8JPKD4jFatHZ+nELisZ4WF+YMpCrBFIvpJe0qdCoLcmbhH1brbsC35qe8F1G3HxIbgA==}
+
+  '@arkiv-network/sdk@1.0.1':
+    resolution: {integrity: sha512-DCOFdGunn4I5nYrvIV/YIkMCkLZM7EQNSyNPtqpmQkP2JzTEfRLBJleBSB2rokWMa833/9P8DMiwsEXACr3CUQ==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      typescript: '>=5.0.0'
+      viem: ^2.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -1087,6 +1100,12 @@ snapshots:
   '@anon-rpc/harness-core@0.4.0':
     dependencies:
       '@noble/hashes': 1.8.0
+
+  '@arkiv-network/sdk@1.0.1(typescript@7.0.2)(viem@2.57.16(typescript@7.0.2))':
+    dependencies:
+      viem: 2.57.16(typescript@7.0.2)
+    optionalDependencies:
+      typescript: 7.0.2
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true

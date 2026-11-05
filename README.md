@@ -149,6 +149,41 @@ It pays only when all of these hold, each verified live on the devnet:
 in one sponsored transaction, with a hybrid period and a one-way switch. The sponsor is
 something only the alt mempool allows.
 
+## Public migration log (Arkiv)
+
+Completed migrations can be listed on a public log on Arkiv's Rabdi testnet (chain 7794095).
+Listing is **opt-in**, and the migration never depends on it.
+- **What's logged:** only completed migrations, and only facts already public onchain. Every
+  field is re-read from the devnet at the migration's block before publishing.
+- **What's never logged:** exposure checks, keys, IPs.
+- **Why:** the devnet can be reset and its explorer keeps history in memory only. The log
+  keeps a durable record that anyone can query without us.
+
+Readers trust only entries owned by the deployment's publisher wallet. Schema and rationale:
+[`arkiv/`](arkiv/).
+
+- Publisher wallet: `0x09Ad723E95ad58D9b963c93dc212fC4DfdAe3631`
+- One query you can run:
+
+```ts
+import { createPublicClient } from "@arkiv-network/sdk";
+import { rabdi } from "@arkiv-network/sdk/chains";
+import { desc } from "@arkiv-network/sdk/query";
+import { http } from "viem";
+import { Migrations } from "./src/arkiv/log.js";
+
+const client = createPublicClient({ chain: rabdi({ accessKey: "" }), transport: http() });
+const { entities } = await client
+  .select({ exposed: true, lifeboat: true, block: true, txHash: true, assets: true })
+  .from(Migrations)
+  .ownedBy("0x09Ad723E95ad58D9b963c93dc212fC4DfdAe3631")
+  .orderBy(desc("block"))
+  .limit(20)
+  .fetch();
+```
+
+Or from the repo: `pnpm arkiv`.
+
 ## Run it
 
 ```bash
@@ -169,6 +204,8 @@ pnpm devnet attack            # stolen ECDSA key + forged PQ sig → rejected
 pnpm devnet pq-only
 pnpm devnet send              # PQ only
 pnpm devnet sponsor-checks    # canonical vs alt mempool, and the sponsor's guardrails
+pnpm devnet publish           # opt in: list the migration on the Arkiv log (needs tGLM, see pnpm arkiv:key)
+pnpm arkiv                    # read the log
 ```
 
 ## Devnet deployment

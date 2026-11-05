@@ -9,7 +9,9 @@
     "devnet": "tsx scripts/devnet.ts",
     "exposure": "tsx scripts/exposure.ts",
     "web": "vite",
-    "web:build": "vite build"
+    "web:build": "vite build",
+    "arkiv": "tsx scripts/arkiv.ts",
+    "arkiv:key": "tsx scripts/arkiv-key.ts"
   },
   "author": "",
   "license": "MIT",
@@ -24,6 +26,7 @@
   "type": "module",
   "dependencies": {
     "@anon-rpc/browser-harness": "0.4.0",
+    "@arkiv-network/sdk": "1.0.1",
     "@forshtat/hegota-support": "0.0.1",
     "@noble/hashes": "^2.4.0",
     "viem": "^2.57.16"
