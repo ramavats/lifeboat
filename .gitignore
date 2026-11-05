@@ -7,3 +7,9 @@ out/
 # Private working notes (not for the repo)
 .memory/
 dist/
+
+# Hairline look-check output (regenerate with the skill)
+web/figure/hairline-*-look.png
+web/figure/hairline-*-blind.png
+web/figure/hairline-*-motion.png
+web/figure/hairline-*-*.png

@@ -245,6 +245,14 @@ explorer https://explorer.altmempool.wtf/ (the devnet can be reset).
 - The Tor exposure check relies on the tor-js demo gateway, which the Anon-RPC docs call
   limited capacity.
 
+## Credits
+- The hero figure, `web/figure/davits.js`, is a lifeboat on its davits drawn for Lifeboat with
+  the `hairline-create` skill, on the engine of [Hairline](https://github.com/lucasmarkes/hairline)
+  by Lucas Marques (MIT). `web/figure/kernel.js` is that engine, copied unchanged. The pointer's
+  height lowers the boat to the water. Standalone page: `web/figure/hairline-davits.html`.
+- Interface checked against [unslop](https://heydamir.design/unslop) by Damir Sokolovsky (CC BY 4.0).
+- Anon-RPC (Ethereum Foundation), Arkiv SDK, `@forshtat/hegota-support` (alt-mempool workshop).
+
 ## How AI was used
 Claude Code (Anthropic) helped research the idea and prior art, write and test the code
 (signer, contracts, devnet scripts, exposure check), and draft this README. Every devnet
