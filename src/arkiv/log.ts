@@ -74,11 +74,20 @@ export interface LogRow extends MigrationRecord {
 }
 
 /** Latest migrations listed by `publisher`, newest block first. */
-export async function readMigrations(publisher: Address, opts: { lifeboat?: Address; limit?: number } = {}): Promise<LogRow[]> {
+export async function readMigrations(
+  publisher: Address,
+  opts: { lifeboat?: Address; exposed?: Address; sponsored?: boolean; limit?: number } = {},
+): Promise<LogRow[]> {
   const q = arkivReader()
     .select({ $key: true, $owner: true, exposed: true, lifeboat: true, chainId: true, block: true, txHash: true, sponsored: true, ethWei: true, assets: true })
     .from(Migrations);
-  const filtered = opts.lifeboat ? q.where(eq("lifeboat", addr(opts.lifeboat))) : q;
+  const filtered = opts.lifeboat
+    ? q.where(eq("lifeboat", addr(opts.lifeboat)))
+    : opts.exposed
+      ? q.where(eq("exposed", addr(opts.exposed)))
+      : opts.sponsored !== undefined
+        ? q.where(eq("sponsored", bool(opts.sponsored)))
+        : q;
   const page = await filtered.ownedBy(publisher).orderBy(desc("block")).limit(opts.limit ?? 50).fetch();
   return page.entities.map((e) => ({
     key: e.$key as Hex,

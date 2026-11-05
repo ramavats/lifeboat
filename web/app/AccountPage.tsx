@@ -3,7 +3,7 @@ import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { parseEther, type Address } from "viem";
 import { readMigrations, type LogRow } from "../../src/arkiv/log.js";
 import { deployment, KEY_TREE_HEIGHT } from "../lib/deployment.js";
-import { REASON_TEXT } from "../lib/wallet.js";
+import { reasonText } from "../lib/wallet.js";
 import { KeyGrid } from "./KeyGrid.js";
 import { ago, dusd, eth, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
@@ -143,12 +143,15 @@ export function AccountPage() {
             >
               {busy === "attack" ? "Attacking" : "Try to drain the account"}
             </button>
+            <a className="btn quiet small" href="#/qday" style={{ marginLeft: 8 }}>
+              More attacks
+            </a>
             {attack && (
               <div className="notice positive small" style={{ marginTop: 16 }}>
                 <span className="status">
                   <ShieldCheck size={16} strokeWidth={1.5} /> Refused by the mempool
                 </span>
-                <p style={{ margin: "4px 0 0" }}>{REASON_TEXT[attack] ?? attack}</p>
+                <p style={{ margin: "4px 0 0" }}>{reasonText(attack)}</p>
                 <p className="meta" style={{ margin: "4px 0 0" }}>{attack}</p>
               </div>
             )}

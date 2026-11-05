@@ -3,7 +3,7 @@ import { hexToBytes } from "viem";
 import type { KeyPair } from "../../src/pq/xmss.js";
 import { KEY_TREE_HEIGHT } from "../lib/deployment.js";
 import { loadWallet, resetWallet } from "../lib/store.js";
-import { REASON_TEXT, RejectedError, Wallet, type Snapshot } from "../lib/wallet.js";
+import { RejectedError, Wallet, reasonText, type Snapshot } from "../lib/wallet.js";
 
 type Keys = { state: "idle" } | { state: "generating"; done: number; total: number } | { state: "ready"; ms: number };
 
@@ -92,7 +92,7 @@ export function useAction() {
       return await fn();
     } catch (e) {
       // A mempool rejection from our own contracts reads better as the contract's reason.
-      if (e instanceof RejectedError && e.reason) setError(REASON_TEXT[e.reason] ?? e.reason);
+      if (e instanceof RejectedError && e.reason) setError(reasonText(e.reason));
       else setError((e as Error).message);
       return undefined;
     } finally {

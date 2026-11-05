@@ -3,10 +3,20 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import { AccountPage } from "./app/AccountPage.js";
 import { CheckPage } from "./app/CheckPage.js";
+import { HowPage } from "./app/HowPage.js";
+import { LogPage } from "./app/LogPage.js";
 import { MovePage } from "./app/MovePage.js";
+import { QdayPage } from "./app/QdayPage.js";
 import { WalletProvider, useWallet } from "./app/wallet-context.js";
 
-const ROUTES = { "#/": "Check", "#/move": "Move aboard", "#/account": "Account" } as const;
+const ROUTES = {
+  "#/": "Check",
+  "#/move": "Move aboard",
+  "#/account": "Account",
+  "#/qday": "Q-day test",
+  "#/log": "Public log",
+  "#/how": "How it works",
+} as const;
 type Route = keyof typeof ROUTES;
 
 function useRoute(): Route {
@@ -71,6 +81,9 @@ function App() {
         {route === "#/" && <CheckPage />}
         {route === "#/move" && <MovePage />}
         {route === "#/account" && <AccountPage />}
+        {route === "#/qday" && <QdayPage />}
+        {route === "#/log" && <LogPage />}
+        {route === "#/how" && <HowPage />}
       </main>
       <Footer />
     </div>

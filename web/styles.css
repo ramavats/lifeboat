@@ -190,6 +190,19 @@ h2 { font-weight: 500; font-size: 20px; line-height: 28px; margin: 0 0 4px; }
 
 .figure-slot { aspect-ratio: 5 / 4; width: 100%; }
 
+/* ---------------------------------------------------------------- log rows */
+.list li.logrow {
+  grid-template-columns: 88px max-content minmax(0, 1fr) 88px minmax(180px, max-content); align-items: center; gap: 24px;
+}
+.nowrap { white-space: nowrap; }
+.grid-halves { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+
+/* ---------------------------------------------------------------- how it works page */
+.how-list { max-width: 820px; }
+.how-section { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; padding: 28px 0; border-top: 1px solid var(--line); }
+.how-section h2 { margin-bottom: 8px; }
+.how-section .facts { margin-top: 12px; }
+
 /* ---------------------------------------------------------------- how it works */
 .how {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.25fr); gap: 32px;
@@ -212,5 +225,11 @@ h2 { font-weight: 500; font-size: 20px; line-height: 28px; margin: 0 0 4px; }
   .split, .grid-2, .how { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .how .facts { padding-left: 0; border-left: 0; }
   .step { grid-template-columns: 28px minmax(0, 1fr); }
+  .list li.logrow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .grid-halves { grid-template-columns: minmax(0, 1fr); }
+  .how-section { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .nav { overflow-x: auto; }
   .step > :last-child { grid-column: 2; }
 }
+.grid-halves > .card { margin-top: 0; }
+.how-section .facts dd { font-family: var(--font); }

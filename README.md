@@ -149,6 +149,25 @@ It pays only when all of these hold, each verified live on the devnet:
 in one sponsored transaction, with a hybrid period and a one-way switch. The sponsor is
 something only the alt mempool allows.
 
+## The app
+
+`pnpm web`, then open http://127.0.0.1:5173. Keys and signing stay in the browser.
+
+| Page | What it does |
+|---|---|
+| Check | Exposure check for any mainnet address, every read over Anon-RPC (Tor). Hero: the lifeboat figure |
+| Move aboard | Five steps: a demo account with an exposed key, 1,024 keys made in a Web Worker, backup, review, one sponsored migration |
+| Account | Balances, send, the one-way switch to quantum-safe only, the 32 × 32 key grid, activity, the Arkiv entry |
+| Q-day test | Two real attacks with the stolen ECDSA key: a forged quantum-safe signature, and a genuine one replayed from an earlier tx. Both refused by the mempool |
+| Public log | The Arkiv feed, filters, "did this address move?", and a button that re-derives any row from the devnet |
+| How it works | The scheme, why the alt mempool, privacy, prior art, limits |
+
+The whole flow was driven end to end in Chromium on the live devnet (Nov 5): migration
+`0x1cb0efcf…72cc04`, hybrid send, both attacks refused (`BadPqSignature`), switch to
+quantum-safe only, a send with the quantum-safe signature alone, the forgery refused again.
+If the shared faucet is empty, the Move page shows the demo address to fund and continues on
+its own once ETH arrives.
+
 ## Public migration log (Arkiv)
 
 Completed migrations can be listed on a public log on Arkiv's Rabdi testnet (chain 7794095).
@@ -209,6 +228,7 @@ pnpm devnet pq-only
 pnpm devnet send              # PQ only
 pnpm devnet sponsor-checks    # canonical vs alt mempool, and the sponsor's guardrails
 pnpm devnet publish           # opt in: list the migration on the Arkiv log (needs tGLM, see pnpm arkiv:key)
+pnpm devnet fund <address>    # send 0.1 devnet ETH from the operator when the shared faucet is empty
 pnpm arkiv                    # read the log
 ```
 

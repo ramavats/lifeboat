@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { ArrowRight, Download } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ArrowRight, Copy, Download } from "lucide-react";
 import { backupBlob } from "../lib/store.js";
 import { dusd, eth, int, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
@@ -29,6 +29,14 @@ export function MovePage() {
   const moved = !!wallet.state.migration;
   const step = !exposed ? 1 : !keysReady ? 2 : !backedUp && !moved ? 3 : !moved ? 5 : 6;
   const st = (n: number) => (n < step ? "done" : n === step ? "active" : "todo");
+
+  const faucetEmpty = !!error && /faucet is empty/i.test(error);
+  // When the faucet is dry, someone sends ETH by hand: watch for it to arrive.
+  useEffect(() => {
+    if (funded || !faucetEmpty) return;
+    const id = setInterval(() => void refresh(), 5000);
+    return () => clearInterval(id);
+  }, [funded, faucetEmpty, refresh]);
 
   const act = (label: string, fn: () => Promise<unknown>) =>
     run(label, async () => {
@@ -80,7 +88,17 @@ export function MovePage() {
                     ? `It has sent ${int(ex.nonce)} transaction${ex.nonce === 1n ? "" : "s"}, so its public key is onchain.`
                     : funded
                       ? "Funded. One ordinary transaction will publish its key, the way every real wallet's key gets published."
-                      : "It needs devnet ETH from the faucet first."}
+                      : faucetEmpty
+                        ? "The shared devnet faucet is empty right now. Send it about 0.1 devnet ETH from any funded account and this step continues on its own:"
+                        : "It needs devnet ETH from the faucet first."}
+                  {!funded && faucetEmpty && (
+                    <span className="row" style={{ marginTop: 8, gap: 8 }}>
+                      <span className="mono" style={{ overflowWrap: "anywhere" }}>{ex.address}</span>
+                      <button className="btn quiet small" aria-label="Copy address" onClick={() => void navigator.clipboard?.writeText(ex.address)}>
+                        <Copy size={14} strokeWidth={1.5} />
+                      </button>
+                    </span>
+                  )}
                 </>
               ) : (
                 "Reading the devnet…"
@@ -175,7 +193,7 @@ export function MovePage() {
             </Step>
           </ol>
           {busy === "move" && <p className="meta" style={{ marginTop: 16 }}>Creating the account and moving, about 20 seconds on the devnet</p>}
-          {error && (
+          {error && !faucetEmpty && (
             <div className="notice negative small" style={{ marginTop: 16 }}>
               {error}
             </div>

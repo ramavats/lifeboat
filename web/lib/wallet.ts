@@ -40,10 +40,14 @@ export function decodeRevert(data: Hex): string | null {
 export const REASON_TEXT: Record<string, string> = {
   "LifeboatAccount.BadPqSignature()": "The quantum-safe signature is missing or wrong, so the account refused to spend.",
   "LifeboatAccount.BadOwnerSignature()": "The account is in hybrid mode and the ECDSA signature is not the owner's.",
+  "LifeboatAccount.WrongOneTimeKey": "The signature used a one-time key that isn't this transaction's key, so the account refused it.",
   "MigrationSponsor.NotExposed()": "The sponsor only pays for accounts whose key is exposed, and this one has never sent a transaction.",
   "MigrationSponsor.AlreadySponsored()": "The sponsor already paid for this account's migration once.",
   "MigrationSponsor.NotALifeboat()": "The sponsor only pays when the funds go into a genuine Lifeboat account.",
 };
+
+/** Plain words for a decoded revert, matching on the error's name when it carries arguments. */
+export const reasonText = (r: string) => REASON_TEXT[r] ?? REASON_TEXT[r.split("(")[0]!] ?? r;
 
 async function submit(t: ftx.FrameTx): Promise<{ hash: Hex; block: bigint }> {
   let hash: Hex;
@@ -200,6 +204,44 @@ export class Wallet {
     return this.spend(calldata.enablePqOnly(), "Switched to quantum-safe only");
   }
 
+  /** The newest transaction this account sent itself (its signatures are public onchain). */
+  lastOwnSpend(): Hex | null {
+    return this.state.activity.find((a) => a.hash && (a.kind.startsWith("Sent from") || a.kind.startsWith("Switched")))?.hash ?? null;
+  }
+
+  /**
+   * Replay: copy the quantum-safe signature out of one of the account's own past transactions
+   * (anyone can read it onchain) and attach it to a new transaction that drains the account.
+   * The signature covers that old transaction's hash only, so it fails.
+   */
+  async attackReplay(): Promise<RejectedError> {
+    const lb = this.state.lifeboat;
+    const old = this.lastOwnSpend();
+    if (!lb || !old) throw new Error("send one transaction from the Lifeboat account first: its signature is what gets replayed");
+    const past = await call("eth_getTransactionByHash", [old]);
+    const stolen = (past?.signatures ?? []).find((sg: { scheme: string }) => Number(sg.scheme) === 0)?.signature as Hex | undefined;
+    if (!stolen) throw new Error("could not read the old transaction's signatures from the devnet");
+    const st = await readState(lb);
+    const t = buildTx({ account: lb, owner: this.exposedAddress, nonce: st.nonce, mode: st.mode, senderData: calldata.execute(deployment.recipient, await balanceOf(lb)) });
+    let forged = st.mode === "HYBRID" ? await ftx.signTx(profile, t, this.state.exposedKey, 0) : t;
+    const pqIndex = st.mode === "HYBRID" ? 1 : 0;
+    forged = { ...forged, signatures: forged.signatures.map((e, i) => (i === pqIndex ? { ...e, signature: stolen } : e)) };
+    return this.expectRejected(forged, `Replayed the signature from ${old.slice(0, 10)}…: rejected`);
+  }
+
+  private async expectRejected(t: ftx.FrameTx, kind: string): Promise<RejectedError> {
+    try {
+      const { hash } = await submit(t);
+      throw new Error(`the attack was admitted (${hash}); this should never happen`);
+    } catch (e) {
+      if (e instanceof RejectedError) {
+        this.persist(kind, undefined, e.reason ?? undefined);
+        return e;
+      }
+      throw e;
+    }
+  }
+
   /**
    * What an attacker with the old ECDSA private key can do: sign the ECDSA part perfectly and
    * fill the quantum-safe slot with a correctly sized forgery. Always rejected.
@@ -213,16 +255,7 @@ export class Wallet {
     const pqIndex = st.mode === "HYBRID" ? 1 : 0;
     const junk = bytesToHex(crypto.getRandomValues(new Uint8Array(8 + 128 * 32 + KEY_TREE_HEIGHT * 32)));
     forged = { ...forged, signatures: forged.signatures.map((e, i) => (i === pqIndex ? { ...e, signature: junk } : e)) };
-    try {
-      const { hash } = await submit(forged);
-      throw new Error(`attack was admitted (${hash}); this should never happen`);
-    } catch (e) {
-      if (e instanceof RejectedError) {
-        this.persist("Attack with the stolen ECDSA key: rejected", undefined, e.reason ?? undefined);
-        return e;
-      }
-      throw e;
-    }
+    return this.expectRejected(forged, "Attack with the stolen ECDSA key: rejected");
   }
 }
 

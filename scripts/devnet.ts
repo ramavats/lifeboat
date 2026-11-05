@@ -8,6 +8,7 @@
  *   pnpm devnet pq-only    switch the Lifeboat account to quantum-safe only
  *   pnpm devnet attack     try to spend with the stolen ECDSA key and a forged PQ signature
  *   pnpm devnet publish    opt in: list the migration on the public Arkiv log (verified from chain)
+ *   pnpm devnet fund <address> [eth]   send devnet ETH from the operator (when the faucet is empty)
  *   pnpm devnet status
  * Throwaway devnet keys, the XMSS seed and the one-time-key journal live in
  * .lifeboat-state.json (gitignored).
@@ -351,6 +352,17 @@ async function publish() {
   console.log(`  read back: ${rows.length} entr${rows.length === 1 ? "y" : "ies"} for this Lifeboat account`);
 }
 
+/** Fund any address from the operator key: the faucet is shared and can run dry. */
+async function fund() {
+  const s = load();
+  const to = process.argv[3] as Address | undefined;
+  if (!to || !/^0x[0-9a-fA-F]{40}$/.test(to)) throw new Error("usage: pnpm devnet fund <address> [eth]");
+  const amount = BigInt(Math.round(Number(process.argv[4] ?? "0.1") * 1e6)) * 1_000_000_000_000n;
+  const h = await sendLegacy(s.operatorKey, { to, value: amount, gas: 210_000n });
+  await waitReceipt(h);
+  console.log(`sent ${fmt(amount)} ETH to ${to} (${h}); operator has ${fmt(await balanceOf(addr(s.operatorKey)))} ETH left`);
+}
+
 async function status() {
   const s = load();
   console.log(JSON.stringify({ operator: addr(s.operatorKey), exposed: addr(s.exposedKey), factory: s.factory, sponsor: s.sponsor, token: s.token, lifeboat: s.lifeboat }, null, 2));
@@ -368,6 +380,7 @@ const commands: Record<string, () => Promise<void>> = {
   attack,
   "sponsor-checks": sponsorChecks,
   publish,
+  fund,
   status,
 };
 const run = commands[process.argv[2] ?? ""];

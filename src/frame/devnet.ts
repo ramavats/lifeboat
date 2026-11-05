@@ -47,31 +47,59 @@ export async function nonceOf(a: Address, tag: "latest" | "pending" = "latest"):
   return BigInt(await call("eth_getTransactionCount", [a, tag]));
 }
 
+type LegacyTx = { to: Address | null; value?: bigint; data?: Hex; gas?: bigint };
+
+/** Legacy txs this process sent, so a lost one can be rebroadcast or re-signed. */
+const sent = new Map<Hex, { key: Hex; tx: LegacyTx; raw: Hex }>();
+
+/**
+ * Wait for a receipt. The devnet's mempool sometimes accepts a legacy tx and then loses it, so
+ * for a tx we sent: every 15 s that the node doesn't know it, rebroadcast the same signed bytes
+ * (harmless); if its nonce was taken meanwhile, re-sign with a fresh nonce and wait for that.
+ */
 export async function waitReceipt(hash: Hex, timeoutMs = 120_000): Promise<any> {
   const end = Date.now() + timeoutMs;
+  let lastCheck = Date.now();
   while (Date.now() < end) {
     const r = await call("eth_getTransactionReceipt", [hash]);
     if (r) return r;
+    const mine = sent.get(hash);
+    if (mine && Date.now() - lastCheck > 15_000) {
+      lastCheck = Date.now();
+      if (!(await call("eth_getTransactionByHash", [hash]))) {
+        try {
+          await call("eth_sendRawTransaction", [mine.raw]);
+        } catch (e) {
+          if (/nonce/i.test((e as Error).message)) {
+            const fresh = await sendLegacy(mine.key, mine.tx);
+            return waitReceipt(fresh, Math.max(30_000, end - Date.now()));
+          }
+        }
+      }
+    }
     await sleep(2000);
   }
   throw new Error(`tx ${hash} not mined within ${timeoutMs / 1000}s`);
 }
 
 /** Legacy tx (deployments, plain transfers) through the gateway, which forwards it to ethrex. */
-export async function sendLegacy(key: Hex, tx: { to: Address | null; value?: bigint; data?: Hex; gas?: bigint }): Promise<Hex> {
+export async function sendLegacy(key: Hex, tx: LegacyTx): Promise<Hex> {
   const acct = privateKeyToAccount(key);
-  const nonce = Number(await nonceOf(acct.address, "pending"));
+  // Right after a tx is mined, the pending count can briefly lag the mined one: take the larger.
+  const [latest, pending] = await Promise.all([nonceOf(acct.address, "latest"), nonceOf(acct.address, "pending")]);
   const raw = await acct.signTransaction({
     type: "legacy",
     chainId: devnet.chainId,
-    nonce,
+    nonce: Number(latest > pending ? latest : pending),
     to: tx.to,
     value: tx.value ?? 0n,
     data: tx.data ?? "0x",
     gas: tx.gas ?? 250_000n,
     gasPrice: devnet.legacyGasPriceWei,
   });
-  return (await call("eth_sendRawTransaction", [raw])) as Hex;
+  const hash = (await call("eth_sendRawTransaction", [raw])) as Hex;
+  sent.set(hash, { key, tx, raw });
+  return hash;
 }
 
 /** The devnet faucet: 1 ETH, once an hour per address. */
