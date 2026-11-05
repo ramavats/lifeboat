@@ -6,3 +6,4 @@ out/
 
 # Private working notes (not for the repo)
 .memory/
+dist/

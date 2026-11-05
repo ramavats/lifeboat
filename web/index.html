@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lifeboat exposure check (Anon-RPC test harness)</title>
+    <style>
+      body { font: 14px/1.5 system-ui, sans-serif; max-width: 760px; margin: 32px auto; padding: 0 16px; }
+      input { width: 100%; font: inherit; padding: 8px; box-sizing: border-box; }
+      pre { white-space: pre-wrap; background: #f4f4f5; padding: 12px; border-radius: 8px; }
+      #log { max-height: 280px; overflow: auto; font-size: 12px; }
+      @media (prefers-color-scheme: dark) { body { background: #141415; color: #ededed; } pre { background: #232325; } }
+    </style>
+  </head>
+  <body>
+    <h1>Exposure check, through Anon-RPC</h1>
+    <p>Test harness only. The real interface comes later.</p>
+    <p><label>Mainnet address <input id="address" value="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" spellcheck="false" /></label></p>
+    <p>
+      <label>Anon-RPC network <select id="network"></select></label>
+      <button id="check">Check</button>
+    </p>
+    <pre id="result"></pre>
+    <h2>Log</h2>
+    <pre id="log"></pre>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
