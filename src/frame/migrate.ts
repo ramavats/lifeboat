@@ -95,9 +95,9 @@ export function buildMigrationTx(p: MigrationPlan): FrameTx {
     nonceSeq: p.nonce,
     frames,
     signatures: [tx.secp256k1Placeholder(profile)],
-    // The base fee here is a few wei: a small tip keeps the sponsor's cost per migration low.
-    // (2.5 gwei / 0.002 gwei sit 10%+ above earlier attempts, so a stuck one gets replaced.)
-    fees: { maxFeePerGas: 2_500_000_000n, maxPriorityFeePerGas: 2_000_000n },
+    // The relayer bundles a few txs at a time, best tip first: a tiny tip starved for 30+ minutes
+    // while 2-gwei txs went through. Match the going tip (3 gwei max also replaces a stuck try).
+    fees: { maxFeePerGas: 3_000_000_000n, maxPriorityFeePerGas: 2_000_000_000n },
   });
 }
 

@@ -20,7 +20,9 @@ export interface OnchainState {
 
 async function readUint(account: Address, fn: string): Promise<bigint> {
   const data = encodeFunctionData({ abi: lifeboatAbi, functionName: fn, args: [] });
-  return BigInt(await call("eth_call", [{ to: account, data }, "latest"]));
+  const out = await call("eth_call", [{ to: account, data }, "latest"]);
+  if (out === "0x") throw new Error(`no Lifeboat account at ${account} yet (not created, or its migration isn't mined)`);
+  return BigInt(out);
 }
 
 export async function readState(account: Address): Promise<OnchainState> {
