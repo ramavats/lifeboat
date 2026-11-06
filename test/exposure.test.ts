@@ -51,3 +51,38 @@ describe("checkExposure", () => {
     await expect(checkExposure(rpc, "vitalik.eth")).rejects.toThrow(/not an address/);
   });
 });
+
+describe("RpcClient retries", () => {
+  const ok = (id: number, result: string) => new Response(JSON.stringify({ jsonrpc: "2.0", id, result }), { headers: { "content-type": "application/json" } });
+
+  it("retries a read that times out, and counts it as one read", async () => {
+    let calls = 0;
+    const fetchFn: FetchFn = async (_url, init) => {
+      calls++;
+      if (calls < 3) throw new Error("operation timed out");
+      return ok(JSON.parse(String(init.body)).id, "0x1");
+    };
+    const rpc = new RpcClient("https://rpc.test", fetchFn);
+    expect(await rpc.request("eth_chainId")).toBe("0x1");
+    expect(calls).toBe(3);
+    expect(rpc.reads).toBe(1);
+  });
+
+  it("retries a 5xx but gives up after three tries", async () => {
+    let calls = 0;
+    const rpc = new RpcClient("https://rpc.test", async () => (calls++, new Response("bad gateway", { status: 502 })));
+    await expect(rpc.request("eth_chainId")).rejects.toThrow("eth_chainId: HTTP 502 (tried 3 times)");
+    expect(calls).toBe(3);
+  });
+
+  it("does not retry the node's own JSON-RPC error", async () => {
+    let calls = 0;
+    const rpc = new RpcClient("https://rpc.test", async (_u, init) => {
+      calls++;
+      const { id } = JSON.parse(String(init.body));
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32602, message: "invalid params" } }), { headers: { "content-type": "application/json" } });
+    });
+    await expect(rpc.request("eth_getBalance", ["0x0"])).rejects.toThrow("invalid params");
+    expect(calls).toBe(1);
+  });
+});

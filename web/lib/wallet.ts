@@ -69,7 +69,15 @@ export interface Snapshot {
   exposed: { address: Address; nonce: bigint; eth: bigint; dusd: bigint };
   lifeboat?: { address: Address; eth: bigint; dusd: bigint; mode: Mode; nonce: bigint; nonceBase: bigint };
   keysUsed: number;
+  /** What the migration sponsor has left to pay fees with. */
+  sponsorEth: bigint;
 }
+
+/**
+ * The sponsor must cover a migration's full gas limit at its max fee up front: about 9.15M gas at
+ * 3 gwei, so 0.0275 ETH. Below this it can't pay for another move.
+ */
+export const SPONSOR_MIN_WEI = 30_000_000_000_000_000n;
 
 export class Wallet {
   constructor(public state: WalletState, private kp: KeyPair | null = null) {}
@@ -93,8 +101,8 @@ export class Wallet {
 
   async snapshot(): Promise<Snapshot> {
     const a = this.exposedAddress;
-    const [nonce, eth, dusd] = await Promise.all([nonceOf(a), balanceOf(a), tokenBalance(a)]);
-    const snap: Snapshot = { exposed: { address: a, nonce, eth, dusd }, keysUsed: Object.keys(this.state.journal).length };
+    const [nonce, eth, dusd, sponsorEth] = await Promise.all([nonceOf(a), balanceOf(a), tokenBalance(a), balanceOf(deployment.sponsor)]);
+    const snap: Snapshot = { exposed: { address: a, nonce, eth, dusd }, keysUsed: Object.keys(this.state.journal).length, sponsorEth };
     if (this.state.lifeboat) {
       const lb = this.state.lifeboat;
       const [st, leth, ldusd] = await Promise.all([readState(lb), balanceOf(lb), tokenBalance(lb)]);

@@ -183,7 +183,7 @@ something only the alt mempool allows.
 
 | Page | What it does |
 |---|---|
-| 1 · Check | Home page: a pixel-grid hero, the problem in three steps, and an exposure check for any mainnet address. Every read goes over Anon-RPC: Tor first, the Nym mixnet if Tor's gateway is slow or down |
+| 1 · Check | Home page: a pixel-grid hero, the problem in three steps, and an exposure check for any mainnet address. Every read goes over Anon-RPC: the Nym mixnet first, Tor as a backup if Nym doesn't connect |
 | 2 · Move | Five steps: a practice account with an exposed key, 1,024 keys made in a Web Worker, backup, review, one sponsored migration. A panel sends the same signed migration to the public mempool to show it refused |
 | 3 · Use it | Balances, send, the one-way switch to quantum-safe only, the 32 × 32 key grid, activity, the Arkiv entry |
 | 4 · Try to break in | Two real attacks with the stolen ECDSA key: a forged quantum-safe signature, and a genuine one replayed from an earlier tx. Both refused by the mempool |
@@ -316,9 +316,13 @@ Before the reset (no longer on the devnet), the CLI run into `0x94a8eC3865A9Dbb5
   there; the sponsored migration doesn't).
 - The sponsor's "exposed" test is nonce > 0. An EIP-7702 delegated EOA with nonce 0 is
   exposed too, but the sponsor can't see its code during validation.
-- The Tor route of the exposure check relies on the tor-js demo gateway, which the Anon-RPC docs
-  call limited capacity. It went down on Nov 6; the check now falls back to the Nym mixnet
-  (about 25 s to connect) and, if neither connects, offers a direct check labelled as not private.
+- The private exposure check depends on public anonymity networks. Tor's only gateway (the tor-js
+  demo one, which the Anon-RPC docs call limited capacity) went down on Nov 6, and a Tor client
+  hunting for it slowed Nym down in the same tab, so the check now uses the Nym mixnet first and
+  Tor only as a backup. Nym connects in about 12–20 s, but its reads sometimes hit the worker's
+  24 s time limit: the check tries two routes (two isolation keys for the same address) for 30 s
+  each, and if both stall it says so and offers a direct check labelled as not private. In our
+  tests on Nov 6 it finished privately in roughly two out of three tries, in 20–40 s.
 - The alt mempool sometimes gives up on a valid transaction its relayer couldn't get into a block
   ("relayed 4 times without being included", seen once on Nov 6). The app watches for that and
   hands the same signed bytes back.

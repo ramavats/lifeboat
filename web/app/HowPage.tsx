@@ -115,7 +115,7 @@ export function HowPage() {
 
         <Section n="05" title="Privacy and control">
           <p className="t2">
-            The exposure check sends all five reads through Anon-RPC over Tor (or the Nym mixnet when Tor's gateway is down), with the checked address as the isolation key,
+            The exposure check sends all five reads through Anon-RPC over the Nym mixnet (or Tor as a backup), with the checked address as the isolation key,
             so the RPC provider sees an exit node and can't link one check to the next. Keys, the seed and the journal stay
             in this browser. Nothing depends on a server of ours: anyone can deploy their own factory and sponsor, and an
             account with ETH can pay for its own move.
@@ -139,7 +139,7 @@ export function HowPage() {
           <p className="t2" style={{ marginBottom: 0 }}>
             Unaudited, experimental cryptography, on a devnet that can be reset. XMSS is stateful: losing the journal and
             signing a different transaction with a used key weakens that key. Creating an account costs the sponsor about
-            7.7M state gas on this devnet. The Tor route relies on a demo gateway, so the check falls back to the Nym mixnet when it's down.{" "}
+            7.7M state gas on this devnet. The private check depends on public anonymity networks: when they're too slow, it says so and offers a direct check instead.{" "}
             <a href="https://github.com/ramavats/lifeboat">The code, tests and transaction log are on GitHub.</a>
           </p>
         </Section>

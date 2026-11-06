@@ -33,20 +33,46 @@ export class RpcClient {
   reads = 0;
   private id = 1;
 
-  constructor(private url: string, private fetchFn: FetchFn = (u, i) => fetch(u, i)) {}
+  constructor(
+    private url: string,
+    private fetchFn: FetchFn = (u, i) => fetch(u, i),
+    /**
+     * Tries per read. Mixnet and Tor reads sometimes hit the worker's time limit, and a fresh try
+     * usually goes through. Copies in flight at once don't help: one Anon-RPC session queues them.
+     */
+    private attempts = 3,
+  ) {}
 
   /** One request per call: Anon-RPC networks don't document batch support, so we don't batch. */
   async request<T = string>(method: string, params: unknown[] = []): Promise<T> {
     this.reads++;
-    const res = await this.fetchFn(this.url, {
+    const id = this.id++;
+    const init = {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: this.id++, method, params }),
-    });
-    if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
-    const body = (await res.json()) as { result?: T; error?: { message: string } };
-    if (body.error) throw new Error(`${method}: ${body.error.message}`);
-    return body.result as T;
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+    };
+    let last: Error = new Error(`${method}: no attempt made`);
+    for (let attempt = 1; attempt <= this.attempts; attempt++) {
+      let res: Response;
+      try {
+        res = await this.fetchFn(this.url, init);
+      } catch (e) {
+        // Network failure or timeout on the way: worth another try.
+        last = new Error(`${method}: ${(e as Error).message}`);
+        continue;
+      }
+      if (res.status >= 500) {
+        last = new Error(`${method}: HTTP ${res.status}`);
+        continue;
+      }
+      if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
+      // A JSON-RPC error is the node's real answer, so it isn't retried.
+      const body = (await res.json()) as { result?: T; error?: { message: string } };
+      if (body.error) throw new Error(`${method}: ${body.error.message}`);
+      return body.result as T;
+    }
+    throw new Error(`${last.message} (tried ${this.attempts} times)`);
   }
 }
 
@@ -55,17 +81,17 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 export async function checkExposure(rpc: RpcClient, address: string): Promise<Exposure> {
   if (!ADDRESS.test(address)) throw new Error("not an address: expected 0x followed by 40 hex characters");
   const before = rpc.reads;
-  // Pin every read to one block so the answers agree with each other.
-  const block = BigInt(await rpc.request("eth_blockNumber"));
-  const tag = `0x${block.toString(16)}`;
-  // Over Anon-RPC each read is its own circuit and TLS session (~1 s on Tor), so run the
-  // four block-pinned reads in parallel rather than one after another.
-  const [chainIdHex, nonceHex, balanceHex, codeHex] = await Promise.all([
+  // Over Anon-RPC each read is its own circuit and TLS session, and on a slow mixnet a read can
+  // take 20 s, so all five go out at once: one round instead of two. They read "latest" rather
+  // than one pinned block; a block's difference can't change whether a key was ever published.
+  const [blockHex, chainIdHex, nonceHex, balanceHex, codeHex] = await Promise.all([
+    rpc.request("eth_blockNumber"),
     rpc.request("eth_chainId"),
-    rpc.request("eth_getTransactionCount", [address, tag]),
-    rpc.request("eth_getBalance", [address, tag]),
-    rpc.request("eth_getCode", [address, tag]),
+    rpc.request("eth_getTransactionCount", [address, "latest"]),
+    rpc.request("eth_getBalance", [address, "latest"]),
+    rpc.request("eth_getCode", [address, "latest"]),
   ]);
+  const block = BigInt(blockHex);
   const chainId = Number(BigInt(chainIdHex));
   const nonce = BigInt(nonceHex);
   const balanceWei = BigInt(balanceHex);

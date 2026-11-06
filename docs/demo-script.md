@@ -21,8 +21,9 @@ narrating for you.
 - [ ] Do one full rehearsal run (Move → Use it → Try to break in → Use it), then start over and record
 - [ ] Have a famous mainnet address ready to paste: `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`
 - [ ] **Open the home page about 30 seconds before you start**, so the private connection is
-      already up ("Private connection ready through …" under the Check field). If Tor's demo
-      gateway is down, it uses the Nym mixnet instead, which takes about 25 seconds.
+      already up ("Private connection ready through the Nym mixnet" under the Check field, usually
+      within 20 seconds). A check then takes 10–40 s; cut the wait in the edit. If it says the
+      private network is too slow, just press Check again (or record this scene later)
 - [ ] Reload the home page right before recording, so the hero animation plays from the start
 
 ---
@@ -134,7 +135,7 @@ for good", click **Turn it off** → **Yes, turn off the old key**. The status c
 |---|---|
 | "The shared test-money tap is empty" | `pnpm devnet fund <address on the page> 0.1`; the step continues by itself |
 | "Move everything" takes longer than 20 s | Keep recording and cut the wait. If the alt mempool gives up on it ("relayed N times without being included"), the app hands it the same transaction again automatically |
-| Check says "Connecting" for a while | It waits for Tor, then the Nym mixnet (about 25 s). Cut the wait, or open the page earlier |
+| Check says "Connecting" or "Checking" for a while | It's waiting on the Nym mixnet. Cut the wait. If it says the private network is too slow, press Check again |
 | "No private connection could be opened" | Skip the privacy line in Scene 2; **Check directly** still works (not private, and it says so) |
 | Devnet was reset (our contracts gone) | `pnpm devnet setup`, put the three printed addresses in `web/lib/deployment.ts`, restart `pnpm web`, start over with a new demo wallet |
 | Devnet RPC returns 502 for a moment | Wait a few seconds and click again; it has recovered on its own so far |

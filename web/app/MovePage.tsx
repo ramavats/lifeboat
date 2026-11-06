@@ -3,6 +3,7 @@ import { Copy, Download } from "lucide-react";
 import { deployment } from "../lib/deployment.js";
 import { backupBlob } from "../lib/store.js";
 import { dusd, eth, int, short } from "./format.js";
+import { SPONSOR_MIN_WEI } from "../lib/wallet.js";
 import { useAction, useWallet } from "./wallet-context.js";
 import { Details, Next, Term, Typed } from "./guide.js";
 
@@ -30,6 +31,8 @@ export function MovePage() {
   const exposed = !!ex && ex.nonce > 0n;
   const keysReady = keys.state === "ready";
   const moved = !!wallet.state.migration;
+  // The sponsor pays every move; when it runs dry, say so instead of failing on the click.
+  const sponsorDry = !moved && !!snapshot && snapshot.sponsorEth < SPONSOR_MIN_WEI;
   const step = !exposed ? 1 : !keysReady ? 2 : !backedUp && !moved ? 3 : !moved ? 5 : 6;
   const st = (n: number) => (n < step ? "done" : n === step ? "active" : "todo");
 
@@ -190,7 +193,7 @@ export function MovePage() {
               title="Move everything"
               action={
                 !moved ? (
-                  <button className="btn primary" disabled={step !== 5 || !!busy} onClick={() => act("move", () => wallet.migrate())}>
+                  <button className="btn primary" disabled={step !== 5 || !!busy || sponsorDry} onClick={() => act("move", () => wallet.migrate())}>
                     {busy === "move" ? "Moving" : "Move everything"}
                   </button>
                 ) : null
@@ -204,6 +207,11 @@ export function MovePage() {
                   </a>
                   . The old account is empty and your funds are in the new one.
                 </>
+              ) : sponsorDry ? (
+                <span style={{ color: "var(--caution)" }}>
+                  Lifeboat's sponsor has run out of test ETH, so it can't pay for moves right now. It gets topped up
+                  regularly: try again later. Everything you've done so far is saved in this browser.
+                </span>
               ) : (
                 <>
                   One transaction creates your Lifeboat account and moves every coin into it. Either all of it happens or none
