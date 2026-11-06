@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Play, Search } from "lucide-react";
-import { RpcClient, checkExposure, type Exposure } from "../../src/exposure/check.js";
-import { NETWORKS, startAnon, type AnonSession } from "../anon.js";
+import { RpcClient, checkExposure, type Exposure, type FetchFn } from "../../src/exposure/check.js";
+import { startAnon, type AnonSession, type NetworkId } from "../anon.js";
 import { eth, int } from "./format.js";
 import { Details, Next, StepMark, Term, Typed, markChecked } from "./guide.js";
 import { Mark } from "./PixelArt.js";
@@ -9,29 +9,90 @@ import { PixelHero } from "./PixelHero.js";
 
 const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 
-type Net = { state: "connecting" } | { state: "ready"; secs: number } | { state: "failed"; reason: string };
+type Net =
+  | { state: "connecting"; via: NetworkId[] }
+  | { state: "ready"; network: NetworkId; secs: number }
+  | { state: "failed"; reason: string };
 
-/** One Anon-RPC session per page load, warmed up before anyone types an address. */
+/** How each private route is named in the copy. */
+const ROUTE: Record<NetworkId, string> = { "tor-js": "Tor", nym: "the Nym mixnet", passthrough: "a passthrough (not private)" };
+/** Start Nym too if Tor hasn't connected by then; give up on both after the second limit. */
+const FALLBACK_MS = 12_000;
+const GIVE_UP_MS = 90_000;
+
+/**
+ * One private connection per page load, warmed up before anyone types an address. Tor goes
+ * first; if its gateway is slow or down, the Nym mixnet starts alongside it and whichever is
+ * ready first is used. A check started before then simply waits for it.
+ */
 function useAnon() {
   const session = useRef<AnonSession | null>(null);
-  const [net, setNet] = useState<Net>({ state: "connecting" });
+  const waiters = useRef<((s: AnonSession | null) => void)[]>([]);
+  const [net, setNet] = useState<Net>({ state: "connecting", via: ["tor-js"] });
+
   useEffect(() => {
     // React may mount this twice in development: ignore whatever a closed session reports.
     let live = true;
+    let settled = false;
     const t0 = performance.now();
-    const s = startAnon("tor-js", MAINNET_RPC, () => {});
-    session.current = s;
-    setNet({ state: "connecting" });
-    s.worker.ready.then(
-      () => live && setNet({ state: "ready", secs: (performance.now() - t0) / 1000 }),
-      (e) => live && setNet({ state: "failed", reason: (e as Error).message }),
-    );
+    const started: AnonSession[] = [];
+    const reasons: string[] = [];
+    const log = (line: string) => import.meta.env.DEV && console.debug("anon-rpc", line);
+    const flush = (s: AnonSession | null) => waiters.current.splice(0).forEach((w) => w(s));
+    const fail = (reason: string) => {
+      if (!live || settled) return;
+      settled = true;
+      started.forEach((x) => x.close());
+      setNet({ state: "failed", reason });
+      flush(null);
+    };
+    let nymStarted = false;
+    const begin = (id: NetworkId) => {
+      const s = startAnon(id, MAINNET_RPC, log);
+      started.push(s);
+      setNet({ state: "connecting", via: started.map((x) => x.network) });
+      s.worker.ready.then(
+        () => {
+          if (!live || settled) return s.close();
+          settled = true;
+          session.current = s;
+          started.filter((x) => x !== s).forEach((x) => x.close());
+          setNet({ state: "ready", network: id, secs: (performance.now() - t0) / 1000 });
+          flush(s);
+        },
+        (e) => {
+          if (!live || settled) return;
+          reasons.push(`${ROUTE[id]}: ${(e as Error).message}`);
+          if (id === "tor-js" && !nymStarted) startNym();
+          else if (reasons.length >= started.length) fail(reasons.join("; "));
+        },
+      );
+    };
+    const startNym = () => {
+      if (nymStarted || !live || settled) return;
+      nymStarted = true;
+      begin("nym");
+    };
+    begin("tor-js");
+    const fb = setTimeout(startNym, FALLBACK_MS);
+    const stop = setTimeout(() => fail(`neither Tor nor the Nym mixnet connected within ${GIVE_UP_MS / 1000}s`), GIVE_UP_MS);
     return () => {
       live = false;
-      s.close();
+      clearTimeout(fb);
+      clearTimeout(stop);
+      started.forEach((x) => x.close());
+      session.current = null;
     };
   }, []);
-  return { session, net };
+
+  /** The private connection, once it's ready; null if none could be opened. */
+  const ready = () =>
+    new Promise<AnonSession | null>((resolve) => {
+      if (session.current) resolve(session.current);
+      else if (net.state === "failed") resolve(null);
+      else waiters.current.push(resolve);
+    });
+  return { net, ready };
 }
 
 const STATUS = {
@@ -41,11 +102,11 @@ const STATUS = {
 } as const;
 
 export function CheckPage() {
-  const { session, net } = useAnon();
+  const { net, ready } = useAnon();
   const [address, setAddress] = useState("");
-  const [result, setResult] = useState<(Exposure & { secs: number }) | null>(null);
+  const [result, setResult] = useState<(Exposure & { secs: number; via: NetworkId | "direct" }) | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | "waiting" | "checking">(false);
   const slot = useRef<HTMLDivElement>(null);
   const calm = useRef<HTMLDivElement>(null);
   const checkRef = useRef<HTMLElement>(null);
@@ -54,19 +115,31 @@ export function CheckPage() {
     setTimeout(() => checkRef.current?.querySelector("input")?.focus({ preventScroll: true }), 400);
   };
 
-  async function check(e?: React.FormEvent) {
+  async function check(e?: React.FormEvent, direct = false) {
     e?.preventDefault();
     const a = address.trim();
-    if (!session.current || !a) return;
-    setBusy(true);
+    if (!a) return;
     setError(null);
     setResult(null);
-    const t0 = performance.now();
     try {
-      // The checked address is the isolation key: checks of different addresses can't be linked.
-      const rpc = new RpcClient(MAINNET_RPC, session.current.fetchFor(a.toLowerCase()));
+      let fetchFn: FetchFn | undefined;
+      let via: NetworkId | "direct" = "direct";
+      if (!direct) {
+        setBusy("waiting");
+        const s = await ready();
+        if (!s) {
+          setError("No private connection could be opened, so nothing was checked. You can check directly instead.");
+          return;
+        }
+        // The checked address is the isolation key: checks of different addresses can't be linked.
+        fetchFn = s.fetchFor(a.toLowerCase());
+        via = s.network;
+      }
+      setBusy("checking");
+      const t0 = performance.now();
+      const rpc = new RpcClient(MAINNET_RPC, fetchFn);
       const r = await checkExposure(rpc, a);
-      setResult({ ...r, secs: (performance.now() - t0) / 1000 });
+      setResult({ ...r, secs: (performance.now() - t0) / 1000, via });
       markChecked();
     } catch (err) {
       setError((err as Error).message);
@@ -76,7 +149,7 @@ export function CheckPage() {
   }
 
   const STEPS_HOME = [
-    { href: "#/", title: "Check", text: "See whether an address has revealed its key. Private: the check goes through Tor.", cta: "Check an address", go: toCheck },
+    { href: "#/", title: "Check", text: "See whether an address has revealed its key. Private: the check goes through Tor, or the Nym mixnet.", cta: "Check an address", go: toCheck },
     { href: "#/move", title: "Move", text: "Get a practice account and move all of it into a Lifeboat account, in one free transaction.", cta: "Move a practice account" },
     { href: "#/account", title: "Use it", text: "Send money from the new account and watch one of its 1,024 one-time keys get used up.", cta: "Open your account" },
     { href: "#/qday", title: "Try to break in", text: "Play the attacker with the stolen old key. The network refuses you, every time.", cta: "Play the attacker" },
@@ -130,14 +203,24 @@ export function CheckPage() {
                 autoComplete="off"
                 aria-label="Ethereum address"
               />
-              <button className="btn primary" disabled={busy || net.state !== "ready" || !address.trim()}>
-                {busy ? "Checking" : "Check"}
-              </button>
+              {net.state === "failed" ? (
+                <button type="button" className="btn secondary" disabled={!!busy || !address.trim()} onClick={() => void check(undefined, true)}>
+                  {busy ? "Checking" : "Check directly"}
+                </button>
+              ) : (
+                <button className="btn primary" disabled={!!busy || !address.trim()}>
+                  {busy === "waiting" ? "Connecting" : busy ? "Checking" : "Check"}
+                </button>
+              )}
             </form>
             <p className="meta" style={{ marginTop: 12 }}>
-              {net.state === "connecting" && "Opening a private connection through Tor, about 10 seconds. Nobody learns which address you check"}
-              {net.state === "ready" && "Private connection ready. Nobody learns which address you check"}
-              {net.state === "failed" && `The private connection could not start: ${net.reason}`}
+              {net.state === "connecting" &&
+                (net.via.length === 1
+                  ? "Opening a private connection through Tor. You can press Check now; it waits for the connection"
+                  : "Tor is slow to answer, so the Nym mixnet is starting too. Whichever connects first is used")}
+              {net.state === "ready" && `Private connection ready through ${ROUTE[net.network]} in ${net.secs.toFixed(0)}s. Nobody learns which address you check`}
+              {net.state === "failed" &&
+                `No private connection could be opened (${net.reason}). Checking directly works, but then the data provider sees the address and your IP`}
             </p>
             <p className="small t2" style={{ marginTop: 20 }}>
               No address handy? <a href="#/move">Skip straight to the demo</a>: it gives you a practice account with test money.
@@ -163,9 +246,18 @@ export function CheckPage() {
                 </dl>
                 <Details summary="How this was checked">
                   <p>
-                    {result.reads} reads of Ethereum mainnet at block {int(result.block)}, sent through {NETWORKS["tor-js"].label}{" "}
-                    with Anon-RPC in {result.secs.toFixed(1)}s. The data provider saw a Tor exit, not you, and can't link this
-                    check to another one.
+                    {result.via === "direct" ? (
+                      <>
+                        {result.reads} reads of Ethereum mainnet at block {int(result.block)}, sent directly in{" "}
+                        {result.secs.toFixed(1)}s. Not private: the data provider saw this address and your IP.
+                      </>
+                    ) : (
+                      <>
+                        {result.reads} reads of Ethereum mainnet at block {int(result.block)}, sent through {ROUTE[result.via]} with
+                        Anon-RPC in {result.secs.toFixed(1)}s. The data provider saw the network's exit, not you, and can't link
+                        this check to another one.
+                      </>
+                    )}
                   </p>
                 </Details>
                 <hr className="rule" />

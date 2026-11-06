@@ -162,7 +162,7 @@ something only the alt mempool allows.
 
 | Page | What it does |
 |---|---|
-| Check | Exposure check for any mainnet address, every read over Anon-RPC (Tor). Hero: the lifeboat figure |
+| Check | Exposure check for any mainnet address, every read over Anon-RPC (Tor, falling back to the Nym mixnet). Hero: the pixel-grid wordmark |
 | Move aboard | Five steps: a demo account with an exposed key, 1,024 keys made in a Web Worker, backup, review, one sponsored migration |
 | Account | Balances, send, the one-way switch to quantum-safe only, the 32 × 32 key grid, activity, the Arkiv entry |
 | Q-day test | Two real attacks with the stolen ECDSA key: a forged quantum-safe signature, and a genuine one replayed from an earlier tx. Both refused by the mempool |
