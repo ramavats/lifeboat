@@ -103,9 +103,30 @@ ${fieldSvg(k.w, k.h, cell * 3, calm)}
 </body></html>`;
 }
 
-function iconHtml(size: number, bg: string | null): string {
-  const cell = Math.floor((size * (bg ? 0.62 : 0.86)) / MARK.cols);
+function iconHtml(size: number, bg: string | null, fill = 0.62): string {
+  // Tiny tab icons fill more of the square so the boat stays readable at 16 px.
+  const cell = size <= 48 ? Math.max(1, Math.round((size * 0.8) / MARK.cols)) : Math.floor((size * fill) / MARK.cols);
   return `<!doctype html><html><head><style>html,body{margin:0;width:${size}px;height:${size}px;background:${bg ?? "transparent"};display:grid;place-items:center;overflow:hidden}</style></head><body>${pixelSvg(MARK, cell, C.accent)}</body></html>`;
+}
+
+/** An .ico file holding PNG images (supported by every browser since Windows Vista). */
+function ico(sizes: number[], pngs: Buffer[]): Buffer {
+  const head = Buffer.alloc(6 + 16 * pngs.length);
+  head.writeUInt16LE(0, 0);
+  head.writeUInt16LE(1, 2); // type: icon
+  head.writeUInt16LE(pngs.length, 4);
+  let offset = head.length;
+  pngs.forEach((png, i) => {
+    const e = 6 + 16 * i;
+    head.writeUInt8(sizes[i]! % 256, e); // width (0 means 256)
+    head.writeUInt8(sizes[i]! % 256, e + 1); // height
+    head.writeUInt16LE(1, e + 4); // colour planes
+    head.writeUInt16LE(32, e + 6); // bits per pixel
+    head.writeUInt32LE(png.length, e + 8);
+    head.writeUInt32LE(offset, e + 12);
+    offset += png.length;
+  });
+  return Buffer.concat([head, ...pngs]);
 }
 
 async function main() {
@@ -142,6 +163,18 @@ async function main() {
   await shoot(iconHtml(512, C.bg), 512, 512, "web/public/icon-512.png");
   await shoot(iconHtml(192, C.bg), 192, 192, "web/public/icon-192.png");
   await shoot(iconHtml(180, C.bg), 180, 180, "web/public/apple-touch-icon.png");
+  // favicon.ico for browsers and tools that ask for it by name: 16, 32 and 48 px PNGs in one file.
+  const sizes = [16, 32, 48];
+  const pngs: Buffer[] = [];
+  for (const n of sizes) {
+    writeFileSync(tmp, iconHtml(n, C.bg));
+    const page = await browser.newPage({ viewport: { width: n, height: n }, deviceScaleFactor: 1 });
+    await page.goto(`file://${tmp}`);
+    pngs.push(await page.screenshot());
+    await page.close();
+  }
+  writeFileSync(out("web/public/favicon.ico"), ico(sizes, pngs));
+  console.log("  web/public/favicon.ico");
   await browser.close();
 
   // The favicon stays vector: the mark's squares, on a light tile so it reads on dark tabs too.
