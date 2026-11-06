@@ -315,7 +315,7 @@ export function MovePage() {
       </div>
 
       {moved && (
-        <Next href="#/account" title="Open your new account">
+        <Next href="/account" title="Open your new account">
           Step 3 of 4. Send some money and see how a quantum-safe signature works.
         </Next>
       )}

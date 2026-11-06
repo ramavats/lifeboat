@@ -54,10 +54,10 @@ export function Details({ summary = "Technical details", children }: { summary?:
 }
 
 export const STEPS = [
-  { href: "#/", label: "Check" },
-  { href: "#/move", label: "Move" },
-  { href: "#/account", label: "Use it" },
-  { href: "#/qday", label: "Try to break in" },
+  { href: "/", label: "Check" },
+  { href: "/move", label: "Move" },
+  { href: "/account", label: "Use it" },
+  { href: "/qday", label: "Try to break in" },
 ] as const;
 
 const CHECKED = "lifeboat.checked";

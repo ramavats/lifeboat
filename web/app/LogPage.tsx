@@ -102,7 +102,7 @@ export function LogPage() {
               {(["all", "sponsored", "self"] as Filter[]).map((f) => (
                 <a
                   key={f}
-                  href="#/log"
+                  href="/log"
                   role="tab"
                   aria-current={filter === f ? "page" : undefined}
                   onClick={(e) => {

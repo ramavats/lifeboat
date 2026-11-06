@@ -36,7 +36,7 @@ export function AccountPage() {
         <p className="meta" style={{ margin: "0 0 8px" }}>Step 3 of 4</p>
         <h1>You don't have a Lifeboat account yet</h1>
         <p className="lede">Do step 2 first: it gives you a practice account and moves it here in one transaction.</p>
-        <a className="btn primary" href="#/move">Go to step 2</a>
+        <a className="btn primary" href="/move">Go to step 2</a>
       </>
     );
   }
@@ -240,7 +240,7 @@ export function AccountPage() {
         </div>
       </div>
 
-      <Next href="#/qday" title={pqOnly ? "Try to break in again" : "Try to break in"}>
+      <Next href="/qday" title={pqOnly ? "Try to break in again" : "Try to break in"}>
         Step 4 of 4. Pretend a quantum computer stole the old key, and try to take the money.
       </Next>
     </>

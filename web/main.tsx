@@ -14,26 +14,53 @@ import { WalletProvider, useWallet } from "./app/wallet-context.js";
 import { saveWallet, type WalletState } from "./lib/store.js";
 
 const ROUTES = {
-  "#/": "Check",
-  "#/move": "Move",
-  "#/account": "Use it",
-  "#/qday": "Try to break in",
-  "#/log": "Public log",
-  "#/how": "How it works",
+  "/": "Check",
+  "/move": "Move",
+  "/account": "Use it",
+  "/qday": "Try to break in",
+  "/log": "Public log",
+  "/how": "How it works",
 } as const;
 type Route = keyof typeof ROUTES;
 
+const isRoute = (p: string): p is Route => p in ROUTES;
+
+// Links from before clean paths (/#/move) still work: turn them into /move once, on load.
+if (location.hash.startsWith("#/") && isRoute(location.hash.slice(1))) {
+  history.replaceState(null, "", location.hash.slice(1) + location.search);
+}
+
+/** The current page, from the path. In-app links change it without reloading the page. */
 function useRoute(): Route {
-  const read = () => ((location.hash in ROUTES ? location.hash : "#/") as Route);
+  const read = (): Route => (isRoute(location.pathname) ? location.pathname : "/");
   const [r, setR] = useState(read);
   useEffect(() => {
-    const on = () => {
+    const show = () => {
       setR(read());
       window.scrollTo(0, 0);
     };
-    addEventListener("hashchange", on);
-    return () => removeEventListener("hashchange", on);
+    // Same-site links to one of our pages: switch page in place instead of a full reload.
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a");
+      if (!a || a.target || a.hasAttribute("download")) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || !isRoute(url.pathname)) return;
+      e.preventDefault();
+      if (url.pathname !== location.pathname) history.pushState(null, "", url.pathname);
+      show();
+    };
+    addEventListener("popstate", show);
+    document.addEventListener("click", onClick);
+    return () => {
+      removeEventListener("popstate", show);
+      document.removeEventListener("click", onClick);
+    };
   }, []);
+  // Each page gets its own tab title.
+  useEffect(() => {
+    document.title = r === "/" ? "Lifeboat" : `${ROUTES[r]} · Lifeboat`;
+  }, [r]);
   return r;
 }
 
@@ -86,8 +113,8 @@ function Footer() {
           <div>
             <p className="label">Learn</p>
             <ul>
-              <li><a href="#/how">How it works</a></li>
-              <li><a href="#/log">Public log</a></li>
+              <li><a href="/how">How it works</a></li>
+              <li><a href="/log">Public log</a></li>
               <li><a href={GITHUB}>Source code</a></li>
             </ul>
           </div>
@@ -135,7 +162,7 @@ function App() {
     <div className="shell">
       <header className="topbar">
         <div className="wrap bar">
-          <a className="wordmark" href="#/">
+          <a className="wordmark" href="/">
             <Mark size={3} />
             Lifeboat
           </a>
@@ -152,8 +179,8 @@ function App() {
           </nav>
           <div className="right">
             <nav className="nav nav-extra" aria-label="More">
-              <a href="#/log" aria-current={route === "#/log" ? "page" : undefined}>Log</a>
-              <a href="#/how" aria-current={route === "#/how" ? "page" : undefined}>How it works</a>
+              <a href="/log" aria-current={route === "/log" ? "page" : undefined}>Log</a>
+              <a href="/how" aria-current={route === "/how" ? "page" : undefined}>How it works</a>
             </nav>
             <span className="net meta">
               <span className="dot positive" />
@@ -167,13 +194,13 @@ function App() {
           </div>
         </div>
       </header>
-      <main className={`wrap ${route === "#/" ? "flush" : ""}`}>
-        {route === "#/" && <CheckPage />}
-        {route === "#/move" && <MovePage />}
-        {route === "#/account" && <AccountPage />}
-        {route === "#/qday" && <QdayPage />}
-        {route === "#/log" && <LogPage />}
-        {route === "#/how" && <HowPage />}
+      <main className={`wrap ${route === "/" ? "flush" : ""}`}>
+        {route === "/" && <CheckPage />}
+        {route === "/move" && <MovePage />}
+        {route === "/account" && <AccountPage />}
+        {route === "/qday" && <QdayPage />}
+        {route === "/log" && <LogPage />}
+        {route === "/how" && <HowPage />}
       </main>
       <Footer />
     </div>

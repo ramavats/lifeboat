@@ -220,10 +220,10 @@ export function CheckPage() {
   }
 
   const STEPS_HOME = [
-    { href: "#/", title: "Check", text: "See whether an address has revealed its key. Private: the check goes through the Nym mixnet, or Tor.", cta: "Check an address", go: toCheck },
-    { href: "#/move", title: "Move", text: "Get a practice account and move all of it into a Lifeboat account, in one free transaction.", cta: "Move a practice account" },
-    { href: "#/account", title: "Use it", text: "Send money from the new account and watch one of its 1,024 one-time keys get used up.", cta: "Open your account" },
-    { href: "#/qday", title: "Try to break in", text: "Play the attacker with the stolen old key. The network refuses you, every time.", cta: "Play the attacker" },
+    { href: "/", title: "Check", text: "See whether an address has revealed its key. Private: the check goes through the Nym mixnet, or Tor.", cta: "Check an address", go: toCheck },
+    { href: "/move", title: "Move", text: "Get a practice account and move all of it into a Lifeboat account, in one free transaction.", cta: "Move a practice account" },
+    { href: "/account", title: "Use it", text: "Send money from the new account and watch one of its 1,024 one-time keys get used up.", cta: "Open your account" },
+    { href: "/qday", title: "Try to break in", text: "Play the attacker with the stolen old key. The network refuses you, every time.", cta: "Play the attacker" },
   ];
 
   return (
@@ -231,7 +231,7 @@ export function CheckPage() {
       <section className="hero bleed" aria-label="Lifeboat">
         <PixelHero slot={slot} calm={calm} />
         <div className="hero-body" ref={calm}>
-          <a className="hero-chip" href="#/how">
+          <a className="hero-chip" href="/how">
             Live on the EIP-8141 test network: a whole account moved in one transaction <ArrowRight size={14} strokeWidth={1.75} />
           </a>
           <div ref={slot} className="hero-slot" role="img" aria-label="Lifeboat" />
@@ -245,7 +245,7 @@ export function CheckPage() {
               <button className="btn primary" onClick={toCheck}>
                 <Search size={16} strokeWidth={2} /> Check an address
               </button>
-              <a className="btn secondary" href="#/move">
+              <a className="btn secondary" href="/move">
                 <Play size={14} strokeWidth={2} fill="currentColor" /> Try the demo
               </a>
             </div>
@@ -294,7 +294,7 @@ export function CheckPage() {
                 `No private connection could be opened (${net.reason}). Checking directly works, but then the data provider sees the address and your IP`}
             </p>
             <p className="small t2" style={{ marginTop: 20 }}>
-              No address handy? <a href="#/move">Skip straight to the demo</a>: it gives you a practice account with test money.
+              No address handy? <a href="/move">Skip straight to the demo</a>: it gives you a practice account with test money.
             </p>
           </div>
 
@@ -350,7 +350,7 @@ export function CheckPage() {
                     : "Nothing to do for this one today. "}
                   You can try the whole move now on a <Term t="test network" /> with a practice account, in about a minute.
                 </p>
-                <a className="btn secondary small" href="#/move">
+                <a className="btn secondary small" href="/move">
                   Try the move <ArrowRight size={14} strokeWidth={1.75} />
                 </a>
               </section>
@@ -446,7 +446,7 @@ export function CheckPage() {
               EIP-8141 frame transaction, paid for by a sponsor that only the ERC-8421 alt mempool will accept.
             </p>
             <p className="t2" style={{ marginBottom: 0 }}>
-              <a href="#/how">Read how it works</a>, or <a href="https://github.com/ramavats/lifeboat">browse the source</a>.
+              <a href="/how">Read how it works</a>, or <a href="https://github.com/ramavats/lifeboat">browse the source</a>.
             </p>
           </div>
           <div className="card">
@@ -464,7 +464,7 @@ export function CheckPage() {
             </dl>
           </div>
         </div>
-        <Next href="#/move" title="Move a practice account to safety">
+        <Next href="/move" title="Move a practice account to safety">
           Step 2 of 4. Takes about a minute, costs nothing.
         </Next>
       </section>

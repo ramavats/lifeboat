@@ -25,7 +25,7 @@ export function QdayPage() {
         <p className="meta" style={{ margin: "0 0 8px" }}>Step 4 of 4</p>
         <h1>Try to break in</h1>
         <p className="lede">There's nothing to break into yet. Do step 2 first, then come back and play the attacker.</p>
-        <a className="btn primary" href="#/move">Go to step 2</a>
+        <a className="btn primary" href="/move">Go to step 2</a>
       </>
     );
   }
@@ -140,11 +140,11 @@ export function QdayPage() {
 
       {results.length > 0 &&
         (lb?.mode === "HYBRID" ? (
-          <Next href="#/account" title="Last step: turn off the old key">
+          <Next href="/account" title="Last step: turn off the old key">
             The stolen key never worked on its own. Switch it off for good in your account, then attack again if you like.
           </Next>
         ) : (
-          <Next href="#/how" title="See how it works">
+          <Next href="/how" title="See how it works">
             You've done the whole journey. Here's what happened under the hood.
           </Next>
         ))}

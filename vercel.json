@@ -3,5 +3,11 @@
   "framework": null,
   "installCommand": "npx --yes pnpm@12.16.1 install --frozen-lockfile",
   "buildCommand": "npx --yes pnpm@12.16.1 run web:build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(move|account|qday|log|how)",
+      "destination": "/index.html"
+    }
+  ]
 }
