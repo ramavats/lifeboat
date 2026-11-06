@@ -8,7 +8,7 @@ import { int } from "./format.js";
 export function KeyGrid({ total, nextLeaf, signed }: { total: number; nextLeaf: number; signed: Set<number> }) {
   const cells = [];
   for (let i = 0; i < total; i++) {
-    const cls = signed.has(i) ? "used" : i < nextLeaf ? "skipped" : i === nextLeaf ? "next" : "";
+    const cls = signed.has(i) ? "used" : i < nextLeaf ? "skipped" : i === nextLeaf ? "upnext" : "";
     cells.push(<i key={i} className={cls} />);
   }
   const used = signed.size;

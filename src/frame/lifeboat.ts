@@ -98,15 +98,29 @@ export const send = (t: FrameTx): Promise<Hex> => call("eth_sendFrameTransaction
  * within `fallbackMs`, offer the very same signed bytes to the node's own (canonical) mempool:
  * Lifeboat account txs qualify there (own storage only, under the 100k budget), so they still
  * land. A sponsored migration doesn't qualify; the canonical mempool refuses it and we keep
- * waiting on the alt mempool. Same bytes, same hash: never a second, different signature.
+ * waiting on the alt mempool. If the alt mempool cancels it unmined, it gets the same bytes again.
+ * Same bytes, same hash: never a second, different signature.
  */
 export async function waitFrameTx(t: FrameTx, hash: Hex, opts: { fallbackMs?: number; timeoutMs?: number } = {}): Promise<any> {
   const fallbackMs = opts.fallbackMs ?? 45_000, end = Date.now() + (opts.timeoutMs ?? 180_000);
   let offered = false;
+  let resent = 0;
+  let lastStatusAt = 0;
   const start = Date.now();
   while (Date.now() < end) {
     const r = await call("eth_getTransactionReceipt", [hash]);
     if (r) return r;
+    // The alt mempool gives up on a valid tx its relayer couldn't get into a block ("relayed N
+    // times without being included"). It's still valid, so hand the same bytes back to it.
+    if (Date.now() - lastStatusAt > 6_000) {
+      lastStatusAt = Date.now();
+      const st = await status(hash).catch(() => null);
+      const state = typeof st === "string" ? st : st?.status;
+      if (state === "Cancelled" && resent < 3) {
+        resent++;
+        await send(t).catch(() => undefined);
+      }
+    }
     if (!offered && Date.now() - start > fallbackMs) {
       offered = true;
       await call("eth_sendRawTransaction", [encodeRawTx(t)]).catch(() => undefined);

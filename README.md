@@ -16,7 +16,11 @@ such path exists yet. Lifeboat is that path:
 3. **Live in hybrid mode** (ECDSA *and* a hash-based signature), then **switch to
    quantum-safe only** when ECDSA can no longer be trusted.
 
-Everything below ran on the public ERC-8421 alt-mempool devnet (chain 1337) on Nov 5, 2026.
+Everything below ran on the public ERC-8421 alt-mempool devnet (chain 1337) on Nov 5–6, 2026. The devnet
+was reset on the afternoon of Nov 6, so the transactions in this table are no longer on its explorer. After
+the reset we redeployed (same contract addresses) and re-ran the whole flow from the browser three times;
+the latest fully sponsored migration, account creation included, is
+`0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150`.
 
 ## What it does, live
 
@@ -238,7 +242,8 @@ pnpm arkiv                    # read the log
 ## Devnet deployment
 
 Alt-mempool devnet, chain 1337, gateway `https://altmempoolgateway.forshtat.com/rpc`,
-explorer https://explorer.altmempool.wtf/ (the devnet can be reset).
+explorer https://explorer.altmempool.wtf/ (the devnet can be reset; it was on Nov 6, and these are the
+addresses after redeploying).
 
 | Contract | Address |
 |---|---|

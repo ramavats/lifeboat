@@ -106,7 +106,7 @@ export function HowPage() {
             <dd>rejected: StorageReadNonSender</dd>
             <dt>Alt mempool</dt>
             <dd>
-              admitted and mined, <Tx h="0x888b3d326d9b385eee21670d7ae2b84e427b655e7d0f805622dd9043d6920015" />
+              admitted and mined, <Tx h="0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150" />
             </dd>
             <dt>Sponsor's rules</dt>
             <dd>key exposed · genuine Lifeboat · once per account · capped gas</dd>

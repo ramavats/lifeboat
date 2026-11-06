@@ -130,6 +130,7 @@ h3 { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
 /* A heading that types itself, then keeps a blinking cursor. */
 .typed { position: relative; }
 .typed .ghost { visibility: hidden; }
+.typed .ghost::after { content: ""; display: inline-block; width: 7px; }
 .typed .ink { position: absolute; inset: 0; }
 .typed .ink::after, .cursor::after {
   content: ""; display: inline-block; width: 3px; height: 0.95em; margin-left: 4px; vertical-align: -0.1em;
@@ -222,11 +223,11 @@ h3 { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
 .bar-progress > i { display: block; height: 100%; background: var(--accent); transition: width 300ms var(--ease); }
 
 /* ---------------------------------------------------------------- key grid */
-.keygrid { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 3px; aspect-ratio: 1; width: 100%; }
+.keygrid { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); grid-template-rows: repeat(32, minmax(0, 1fr)); gap: 3px; aspect-ratio: 1; width: 100%; }
 .keygrid i { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .keygrid i.skipped { box-shadow: none; background: var(--raised); }
 .keygrid i.used { box-shadow: none; background: var(--accent); }
-.keygrid i.next { box-shadow: inset 0 0 0 2px var(--accent); }
+.keygrid i.upnext { box-shadow: inset 0 0 0 2px var(--accent); }
 .keygrid i.fresh { animation: fill 400ms var(--ease); }
 @keyframes fill { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
