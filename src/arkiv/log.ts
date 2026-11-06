@@ -71,15 +71,20 @@ export async function publishMigration(privateKey: Hex, r: MigrationRecord) {
 export interface LogRow extends MigrationRecord {
   key: Hex;
   publisher: Address;
+  /** When the entry was written on Arkiv (an Arkiv block number). */
+  listedAt: bigint;
 }
 
-/** Latest migrations listed by `publisher`, newest block first. */
+/**
+ * Migrations listed by `publisher`, most recently listed first. Ordered by when the entry was
+ * written, not by devnet block: the devnet can be reset, and its block numbers restart then.
+ */
 export async function readMigrations(
   publisher: Address,
   opts: { lifeboat?: Address; exposed?: Address; sponsored?: boolean; limit?: number } = {},
 ): Promise<LogRow[]> {
   const q = arkivReader()
-    .select({ $key: true, $owner: true, exposed: true, lifeboat: true, chainId: true, block: true, txHash: true, sponsored: true, ethWei: true, assets: true })
+    .select({ $key: true, $owner: true, $createdAt: true, exposed: true, lifeboat: true, chainId: true, block: true, txHash: true, sponsored: true, ethWei: true, assets: true })
     .from(Migrations);
   const filtered = opts.lifeboat
     ? q.where(eq("lifeboat", addr(opts.lifeboat)))
@@ -89,9 +94,10 @@ export async function readMigrations(
         ? q.where(eq("sponsored", bool(opts.sponsored)))
         : q;
   const page = await filtered.ownedBy(publisher).orderBy(desc("block")).limit(opts.limit ?? 50).fetch();
-  return page.entities.map((e) => ({
+  const rows = page.entities.map((e) => ({
     key: e.$key as Hex,
     publisher: e.$owner as Address,
+    listedAt: BigInt((e as { $createdAt?: bigint | number | string }).$createdAt ?? 0),
     exposed: e.exposed.value as Address,
     lifeboat: e.lifeboat.value as Address,
     chainId: Number(e.chainId.value),
@@ -101,5 +107,6 @@ export async function readMigrations(
     ethWei: BigInt(e.ethWei.value),
     assets: String(e.assets.value),
   }));
+  return rows.sort((a, b) => (b.listedAt > a.listedAt ? 1 : b.listedAt < a.listedAt ? -1 : 0));
 }
 
