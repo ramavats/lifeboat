@@ -1,7 +1,13 @@
 # Lifeboat
 
+![Lifeboat: move your Ethereum account to quantum-safe keys](docs/cover.png)
+
 **Move an Ethereum account to quantum-safe keys before anyone can break the ones it uses
 today.**
+
+Others tell you your account is exposed, or propose protocol changes for later. Lifeboat gets
+you out now: one free, all-or-nothing transaction moves everything into a quantum-safe account,
+and the old key stops working for an attacker.
 
 Every Ethereum account that has sent a transaction has published its secp256k1 public key.
 A large enough quantum computer can derive the private key from it. Ethereum's plan is
@@ -172,10 +178,15 @@ It pays only when all of these hold, each verified live on the devnet:
 | [ZKnox ETHFALCON](https://github.com/ZKNoxHQ), LimeChain FlyFlow | Falcon verifiers, ERC-4337 PQ accounts | Not frame transactions, no migration |
 | StablePQC, Quantus | Ethereum address exposure checkers | We act on the result, and our check is private (Anon-RPC) |
 | BitGo quantum checker | Bitcoin checker + sweep | Ethereum, into a PQ account |
+| [EIP-8164](https://eips.ethereum.org/EIPS/eip-8164): Native Key Delegation for EOAs (draft) | A new transaction type that switches an EOA to ML-DSA at the same address, in one step | A protocol change that would need a hard fork. Lifeboat works with EIP-8141 frame accounts and any quantum-safe scheme in the account's own code. If 8164 ships, the exposure check and the sponsored move still apply |
+| ZK proof + EIP-7702 retrofit (ethresear.ch proposal, April 2026) | Delegate an EOA to a contract that accepts a zero-knowledge proof of the old key | A research proposal, not a built tool |
+| StarkWare's post-quantum wallet migration | A migration demo | On Starknet's testnet, not Ethereum |
+| Falcon-512 in the EVM | The usual post-quantum verifier choice | Over 1M gas to verify, per the [EIP-8141 post-quantum roadmap](https://eip8141.io/pq-roadmap). Lifeboat's verifier costs a fixed 48.6k, which is why its accounts fit the public mempool's 100k budget |
 
-**New:** a self-serve path from an exposed Ethereum account into a quantum-safe frame account
-in one sponsored transaction, with a hybrid period and a one-way switch. The sponsor is
-something only the alt mempool allows.
+**New:** a working, self-serve path from an exposed Ethereum account into a quantum-safe frame
+account in one sponsored, all-or-nothing transaction, with a hybrid period and a one-way switch.
+The sponsor is something only the alt mempool allows. Checked against the sources above on
+Nov 6, 2026; we found no other tool that does the move.
 
 ## The app
 
@@ -302,6 +313,10 @@ Before the reset (no longer on the devnet), the CLI run into `0x94a8eC3865A9Dbb5
 | alt-mempool migration (sponsor checks) | `0x888b3d326d9b385eee21670d7ae2b84e427b655e7d0f805622dd9043d6920015` |
 
 ## Limitations
+- **Move before Q-day, not after.** The migration is signed by the account's old ECDSA key, the
+  last thing it ever signs with that key alone. Once a quantum computer can derive that key, an
+  attacker could race the owner with a transaction of their own. Lifeboat protects accounts that
+  move early; afterwards, the Lifeboat account itself stays safe.
 - Unaudited, experimental cryptography. Devnet only: EIP-8141 is not on mainnet.
 - XMSS is stateful: losing the journal and signing a different transaction with a used key
   weakens that key. The onchain nonce binding stops a key being *accepted* twice, but it
