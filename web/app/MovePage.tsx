@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, Copy, Download } from "lucide-react";
+import { Copy, Download } from "lucide-react";
 import { backupBlob } from "../lib/store.js";
 import { dusd, eth, int, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
+import { Details, Next, Term } from "./guide.js";
 
 function Step(p: { n: number; state: "done" | "active" | "todo"; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
@@ -57,10 +58,12 @@ export function MovePage() {
 
   return (
     <>
-      <h1>Move aboard</h1>
+      <p className="meta" style={{ margin: "0 0 8px" }}>Step 2 of 4</p>
+      <h1>Move an account to safety</h1>
       <p className="lede">
-        Five steps, one transaction. Your quantum-safe keys are made in this browser and never leave it. It runs on the
-        EIP-8141 devnet with a demo account, since frame transactions aren't on mainnet yet.
+        You'll get a practice account that's in the same spot as most real ones: its key is already{" "}
+        <Term t="exposed key">exposed</Term>. Then you'll move everything in it to a new Lifeboat account. Five short steps,
+        all with <Term t="test money" />.
       </p>
 
       <div className="grid-2">
@@ -69,11 +72,11 @@ export function MovePage() {
             <Step
               n={1}
               state={st(1)}
-              title="An account with an exposed key"
+              title="Get a practice account"
               action={
                 !funded ? (
                   <button className="btn secondary small" disabled={!!busy || !ex} onClick={() => act("fund", () => wallet.fund())}>
-                    {busy === "fund" ? "Funding" : "Get devnet ETH"}
+                    {busy === "fund" ? "Getting it" : "Get test money"}
                   </button>
                 ) : !exposed ? (
                   <button className="btn secondary small" disabled={!!busy} onClick={() => act("expose", () => wallet.expose())}>
@@ -84,14 +87,23 @@ export function MovePage() {
             >
               {ex ? (
                 <>
-                  Demo account <span className="mono">{short(ex.address)}</span>.{" "}
-                  {exposed
-                    ? `It has sent ${int(ex.nonce)} transaction${ex.nonce === 1n ? "" : "s"}, so its public key is onchain.`
-                    : funded
-                      ? "Funded. One ordinary transaction will publish its key, the way every real wallet's key gets published."
-                      : faucetEmpty
-                        ? "The shared devnet faucet is empty right now. Send it about 0.1 devnet ETH from any funded account and this step continues on its own:"
-                        : "It needs devnet ETH from the faucet first."}
+                  {exposed ? (
+                    <>
+                      Your practice account <span className="mono">{short(ex.address)}</span> has sent {int(ex.nonce)} transaction
+                      {ex.nonce === 1n ? "" : "s"}, so its public key is out, like most real accounts.
+                    </>
+                  ) : funded ? (
+                    <>
+                      It has test money. Now send one ordinary transaction: that's the moment a real wallet reveals its key.
+                    </>
+                  ) : faucetEmpty ? (
+                    "The shared test-money tap is empty right now. Send about 0.1 test ETH to this address from any funded account and this step continues on its own:"
+                  ) : (
+                    <>
+                      This browser made you a fresh account, <span className="mono">{short(ex.address)}</span>. First it needs
+                      some test money.
+                    </>
+                  )}
                   {!funded && faucetEmpty && (
                     <span className="row" style={{ marginTop: 8, gap: 8 }}>
                       <span className="mono" style={{ overflowWrap: "anywhere" }}>{ex.address}</span>
@@ -102,14 +114,14 @@ export function MovePage() {
                   )}
                 </>
               ) : (
-                "Reading the devnet…"
+                "Connecting to the test network…"
               )}
             </Step>
 
             <Step
               n={2}
               state={st(2)}
-              title="Make quantum-safe keys"
+              title="Make your quantum-safe keys"
               action={
                 keys.state === "idle" ? (
                   <button className="btn secondary small" disabled={!exposed} onClick={generateKeys}>
@@ -118,7 +130,11 @@ export function MovePage() {
                 ) : null
               }
             >
-              {keys.state === "idle" && "1,024 one-time keys from a fresh seed, hashed in a background thread."}
+              {keys.state === "idle" && (
+                <>
+                  1,024 <Term t="one-time key">one-time keys</Term>, made on this device. About 5 seconds.
+                </>
+              )}
               {keys.state === "generating" && (
                 <>
                   <span className="mono">
@@ -130,13 +146,13 @@ export function MovePage() {
                   </div>
                 </>
               )}
-              {keys.state === "ready" && `1,024 one-time keys, made in this browser in ${(keys.ms / 1000).toFixed(1)}s.`}
+              {keys.state === "ready" && `1,024 one-time keys, made in this browser in ${(keys.ms / 1000).toFixed(1)}s. They never leave it.`}
             </Step>
 
             <Step
               n={3}
               state={moved ? "done" : st(3)}
-              title="Back up the seed and the journal"
+              title="Save a backup"
               action={
                 keysReady && !moved ? (
                   <div className="row">
@@ -144,25 +160,25 @@ export function MovePage() {
                       <Download size={16} strokeWidth={1.5} /> Download
                     </button>
                     <button className="btn quiet small" onClick={() => setBackedUp(true)} disabled={backedUp}>
-                      {backedUp ? "Stored" : "I stored it"}
+                      {backedUp ? "Saved" : "I saved it"}
                     </button>
                   </div>
                 ) : null
               }
             >
-              The journal records which key signed what. A one-time key must never sign twice, so losing it is worse
-              than losing a password.
+              A small file with your keys and a note of which ones you've used. Each key may sign only once, so keep the file
+              safe, like a password.
             </Step>
 
-            <Step n={4} state={moved ? "done" : step >= 4 ? "done" : "todo"} title="Review what moves">
+            <Step n={4} state={moved ? "done" : step >= 4 ? "done" : "todo"} title="Check what will move">
               {ex && (
                 <dl className="facts" style={{ marginTop: 8 }}>
                   <dt>ETH</dt>
                   <dd>{eth(moved ? 0n : ex.eth)} ETH</dd>
                   <dt>Tokens</dt>
                   <dd>{dusd(moved ? 0n : ex.dusd)} dUSD</dd>
-                  <dt>Gas</dt>
-                  <dd>paid by the migration sponsor</dd>
+                  <dt>Fee</dt>
+                  <dd>0, paid by Lifeboat's sponsor</dd>
                 </dl>
               )}
             </Step>
@@ -170,41 +186,44 @@ export function MovePage() {
             <Step
               n={5}
               state={st(5)}
-              title="Move everything in one transaction"
+              title="Move everything"
               action={
                 !moved ? (
                   <button className="btn primary" disabled={step !== 5 || !!busy} onClick={() => act("move", () => wallet.migrate())}>
                     {busy === "move" ? "Moving" : "Move everything"}
                   </button>
-                ) : (
-                  <a className="btn secondary small" href="#/account">
-                    Open the account <ArrowRight size={16} strokeWidth={1.5} />
-                  </a>
-                )
+                ) : null
               }
             >
               {moved ? (
                 <>
-                  Done in one atomic transaction <span className="mono">{short(wallet.state.migration!.hash, 10, 6)}</span>. The
-                  old account is empty.
+                  Done in one transaction <span className="mono">{short(wallet.state.migration!.hash, 10, 6)}</span>. The old
+                  account is empty and your funds are in the new one.
                 </>
               ) : (
-                "One sponsored frame transaction creates your Lifeboat account and moves every asset into it. All of it lands, or none of it does. You pay nothing, not even for the new account."
+                <>
+                  One transaction creates your Lifeboat account and moves every coin into it. Either all of it happens or none
+                  of it does. A <Term t="sponsor" /> pays the fee.
+                </>
               )}
             </Step>
           </ol>
-          {busy === "move" && <p className="meta" style={{ marginTop: 16 }}>Creating the account and moving, about 20 seconds on the devnet</p>}
+          {busy === "move" && <p className="meta" style={{ marginTop: 16 }}>Creating your account and moving everything, about 20 seconds</p>}
 
           {(step >= 5 || moved) && (
             <div className="mempools">
               <div className="row between" style={{ flexWrap: "wrap" }}>
-                <h3 style={{ margin: 0 }}>The same transaction, two mempools</h3>
+                <h3 style={{ margin: 0 }}>Why this free move needs something new</h3>
                 {!moved && !publicTry && (
                   <button className="btn quiet small" disabled={!!busy} onClick={() => void run("public", async () => setPublicTry(await wallet.tryPublicMempool()))}>
                     {busy === "public" ? "Sending" : "Try the public mempool first"}
                   </button>
                 )}
               </div>
+              <p className="t2 small" style={{ margin: "4px 0 8px" }}>
+                The same transaction, sent to two <Term t="mempool">waiting rooms</Term>. The usual one refuses it. The new{" "}
+                <Term t="alt mempool" /> lets it in.
+              </p>
               <ul className="list small">
                 <li>
                   <span>
@@ -229,7 +248,7 @@ export function MovePage() {
                   <span className="t2">
                     {moved ? (
                       <>
-                        Admitted and mined · <span className="mono">{short(wallet.state.migration!.hash, 8, 4)}</span>
+                        Let in and done · <span className="mono">{short(wallet.state.migration!.hash, 8, 4)}</span>
                       </>
                     ) : (
                       "Move everything sends it here"
@@ -239,8 +258,8 @@ export function MovePage() {
               </ul>
               {publicTry && !publicTry.accepted && (
                 <p className="meta" style={{ margin: "8px 0 0" }}>
-                  The public mempool won't let the sponsor read another contract while it checks the transaction. The
-                  alt mempool allows it for a staked sponsor, which is what makes the free move possible.
+                  To pay safely, the sponsor checks that your funds really go into a Lifeboat account. The public mempool forbids
+                  that check. The alt mempool allows it for a sponsor that has put down a deposit.
                 </p>
               )}
             </div>
@@ -256,21 +275,38 @@ export function MovePage() {
           <div className="card small">
             <h2>Why it's free</h2>
             <p className="t2" style={{ margin: 0 }}>
-              A sponsor pays the gas, but only for this exact shape: the sender's key is exposed, every asset goes into a
-              genuine Lifeboat account, and only once per account. Checking that means reading another contract during
-              validation, which only the ERC-8421 alt mempool allows. The public mempool rejects the same transaction.
+              Lifeboat's sponsor pays the fee, but only for this exact kind of move: from an exposed account, into a real
+              Lifeboat account, once per account. It can't be tricked into paying for anything else.
             </p>
+            <Details>
+              <p>
+                The sponsor checks those rules while the transaction is being validated, which means reading the Lifeboat
+                factory's registry. Reading another contract's storage at that point is only allowed for a staked sponsor in
+                the ERC-8421 alt mempool; the public mempool rejects it with StorageReadNonSender.
+              </p>
+            </Details>
           </div>
           <div className="card small">
             <h2>What stays on this device</h2>
             <p className="t2" style={{ margin: 0 }}>
-              The seed, the journal and the demo account's key, in this browser's storage. Nothing is sent anywhere but
-              the signed transactions.
+              Your new keys and the practice account's key live in this browser. Only the signed transactions leave it.
+            </p>
+          </div>
+          <div className="card small">
+            <h2>Why a practice account?</h2>
+            <p className="t2" style={{ margin: 0 }}>
+              Lifeboat accounts use a new transaction type (EIP-8141) that's only live on a test network so far. When it
+              reaches Ethereum, the same steps move your real account.
             </p>
           </div>
         </aside>
       </div>
+
+      {moved && (
+        <Next href="#/account" title="Open your new account">
+          Step 3 of 4. Send some money and see how a quantum-safe signature works.
+        </Next>
+      )}
     </>
   );
 }
-

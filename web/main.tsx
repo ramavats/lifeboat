@@ -7,14 +7,15 @@ import { HowPage } from "./app/HowPage.js";
 import { LogPage } from "./app/LogPage.js";
 import { MovePage } from "./app/MovePage.js";
 import { QdayPage } from "./app/QdayPage.js";
+import { STEPS, StepMark, Term, progress } from "./app/guide.js";
 import { WalletProvider, useWallet } from "./app/wallet-context.js";
 import { saveWallet, type WalletState } from "./lib/store.js";
 
 const ROUTES = {
   "#/": "Check",
-  "#/move": "Move aboard",
-  "#/account": "Account",
-  "#/qday": "Q-day test",
+  "#/move": "Move",
+  "#/account": "Use it",
+  "#/qday": "Try to break in",
   "#/log": "Public log",
   "#/how": "How it works",
 } as const;
@@ -77,6 +78,8 @@ function Footer() {
 
 function App() {
   const route = useRoute();
+  const { wallet } = useWallet();
+  const done = progress(wallet.state);
   return (
     <div className="shell">
       <header className="bar">
@@ -84,16 +87,26 @@ function App() {
           <span className="flag" aria-hidden />
           Lifeboat
         </a>
-        <nav className="nav">
-          {(Object.keys(ROUTES) as Route[]).map((r) => (
-            <a key={r} href={r} aria-current={route === r ? "page" : undefined}>
-              {ROUTES[r]}
-            </a>
+        <nav className="nav journey" aria-label="Steps">
+          {STEPS.map((s, i) => (
+            <span key={s.href} className="row" style={{ gap: 4 }}>
+              {i > 0 && <span className="sep" aria-hidden />}
+              <a href={s.href} aria-current={route === s.href ? "page" : undefined}>
+                <StepMark n={i + 1} done={done[i]!} />
+                {s.label}
+              </a>
+            </span>
           ))}
+        </nav>
+        <nav className="nav nav-extra" aria-label="More">
+          <a href="#/log" aria-current={route === "#/log" ? "page" : undefined}>Public log</a>
+          <a href="#/how" aria-current={route === "#/how" ? "page" : undefined}>How it works</a>
         </nav>
         <span className="net meta">
           <span className="dot positive" />
-          <span>devnet 1337</span>
+          <Term t="test network">
+            <span>test network</span>
+          </Term>
         </span>
       </header>
       <main>

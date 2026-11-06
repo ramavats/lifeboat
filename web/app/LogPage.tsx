@@ -6,6 +6,7 @@ import { call } from "../../src/frame/devnet.js";
 import { summarizeMigrationTx } from "../../src/frame/migrate.js";
 import { deployment } from "../lib/deployment.js";
 import { eth, int, short } from "./format.js";
+import { Term } from "./guide.js";
 
 type Filter = "all" | "sponsored" | "self";
 type Verdict = { state: "checking" } | { state: "ok" } | { state: "mismatch"; why: string };
@@ -69,7 +70,7 @@ export function LogPage() {
         <span className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
           {!v && (
             <button className="btn quiet small" onClick={() => void check(r)}>
-              Verify on the devnet
+              Check against the chain
             </button>
           )}
           {v?.state === "checking" && <span className="meta">Checking</span>}
@@ -86,16 +87,17 @@ export function LogPage() {
 
   return (
     <>
-      <h1>Public migration log</h1>
+      <h1>Public list of moves</h1>
       <p className="lede">
-        Migrations their owners chose to list, stored on Arkiv so the record outlives the devnet. Only facts already in each
-        migration transaction. Don't take the log's word for it: verify any row against the chain.
+        Accounts whose owners chose to share that they moved to Lifeboat. It holds only facts already public in each move,
+        kept on <Term t="Arkiv" /> so the record lasts after the test network resets. Don't take the list's word for it:
+        check any row against the chain.
       </p>
 
       <div className="stack-16">
         <section className="card">
           <div className="row between" style={{ flexWrap: "wrap", marginBottom: 12 }}>
-            <h2 style={{ margin: 0 }}>Recent migrations</h2>
+            <h2 style={{ margin: 0 }}>Recent moves</h2>
             <div className="nav" role="tablist" aria-label="Filter">
               {(["all", "sponsored", "self"] as Filter[]).map((f) => (
                 <a
@@ -141,16 +143,16 @@ export function LogPage() {
               </p>
             ))}
             <p className="meta" style={{ marginBottom: 0 }}>
-              This lookup asks Arkiv directly, not over Tor, and is about the devnet log only. The mainnet check on the first
-              page is the private one.
+              Searches this list only, and isn't private: Arkiv sees what you look up. The check on the first page is the
+              private one.
             </p>
           </section>
 
           <section className="card small">
             <h2>How entries get here</h2>
             <p className="t2">
-              Listing is opt-in. The publisher reads the migration transaction from the devnet, checks every frame moves assets
-              into a registered Lifeboat account, and only then writes the entry. Exposure checks are never logged.
+              Only when an owner asks. Lifeboat's publisher first reads the move from the test network and confirms that
+              everything went into a real Lifeboat account. Address checks from the first page are never recorded.
             </p>
             <dl className="facts">
               <dt>Publisher</dt>

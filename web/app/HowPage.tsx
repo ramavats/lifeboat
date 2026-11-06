@@ -18,10 +18,36 @@ export function HowPage() {
   return (
     <>
       <h1>How Lifeboat works</h1>
-      <p className="lede">
-        An exposed account moves into an account that signs with hash-based keys, in one transaction, and stays safe after
-        ECDSA stops being safe. Everything here ran on the EIP-8141 alt-mempool devnet.
-      </p>
+      <p className="lede">The short version first, then the details for developers.</p>
+
+      <section className="card" style={{ maxWidth: 820, marginBottom: 48 }}>
+        <h2>The short version</h2>
+        <ol className="short-version t2">
+          <li>
+            <b>The risk.</b> Every Ethereum account that has sent a transaction has revealed its public key. A future quantum
+            computer could turn that into the private key and empty the account.
+          </li>
+          <li>
+            <b>The fix.</b> Hash-based signatures are believed to be safe from quantum computers. Lifeboat gives you an account
+            that checks one of those on every transaction, using 1,024 single-use keys made on your own device.
+          </li>
+          <li>
+            <b>The move.</b> One transaction creates that account and moves all your coins and tokens into it. A sponsor pays
+            the fee, so even an account with no spare ETH can escape.
+          </li>
+          <li>
+            <b>The switch.</b> At first the account needs both your old key and a quantum-safe signature. When the threat is
+            real, you turn the old key off and only the quantum-safe keys count.
+          </li>
+          <li>
+            <b>Why now, and why a test network.</b> This needs a new kind of Ethereum transaction (EIP-8141) and a new mempool
+            (ERC-8421) that lets the sponsor check the move. Both run on a test network today. Lifeboat shows the whole path
+            working there.
+          </li>
+        </ol>
+      </section>
+
+      <h2 style={{ marginBottom: 8 }}>The details</h2>
 
       <div className="how-list">
         <Section n="01" title="The problem">

@@ -38,8 +38,8 @@ export function decodeRevert(data: Hex): string | null {
 /** Plain words for the errors a person can run into. */
 export const REASON_TEXT: Record<string, string> = {
   "LifeboatAccount.BadPqSignature()": "The quantum-safe signature is missing or wrong, so the account refused to spend.",
-  "LifeboatAccount.BadOwnerSignature()": "The account is in hybrid mode and the ECDSA signature is not the owner's.",
-  "LifeboatAccount.WrongOneTimeKey": "The signature used a one-time key that isn't this transaction's key, so the account refused it.",
+  "LifeboatAccount.BadOwnerSignature()": "The account needs both locks, and the old-key signature isn't the owner's.",
+  "LifeboatAccount.WrongOneTimeKey": "The signature was made with the wrong one-time key, so the account refused it.",
   "MigrationSponsor.NotExposed()": "The sponsor only pays for accounts whose key is exposed, and this one has never sent a transaction.",
   "MigrationSponsor.AlreadySponsored()": "The sponsor already paid for this account's migration once.",
   "MigrationSponsor.NotALifeboat()": "The sponsor only pays when the funds go into a genuine Lifeboat account.",
@@ -108,7 +108,7 @@ export class Wallet {
   /** Devnet faucet: 1 ETH, once an hour per address. */
   async fund() {
     const h = await faucet(this.exposedAddress);
-    this.persist("Funded from the devnet faucet", h);
+    this.persist("Got test money", h);
   }
 
   /** One ordinary transaction (publishes the public key) and 2,400 test dUSD to move later. */
@@ -188,7 +188,7 @@ export class Wallet {
     saveWallet(this.state);
     const { hash, block } = await submit(signed);
     this.state.migration = { hash, block: block.toString() };
-    this.persist(exists ? "Moved everything aboard (gas paid by the sponsor)" : "Created the account and moved everything aboard (all gas paid by the sponsor)", hash);
+    this.persist(exists ? "Moved everything into Lifeboat (fee paid by the sponsor)" : "Created the account and moved everything in (fee paid by the sponsor)", hash);
     return hash;
   }
 
@@ -228,7 +228,7 @@ export class Wallet {
   async rotate(next: { seed: Hex; kp: KeyPair }) {
     const { hash } = await this.spend(
       calldata.rotateKeys(bytesToHex(next.kp.pub.pubSeed), bytesToHex(next.kp.pub.root), BigInt(next.kp.pub.height)),
-      "Rotated to a fresh key tree",
+      "Swapped in 1,024 fresh keys",
     );
     this.state.seed = next.seed;
     this.state.journal = {};
@@ -259,7 +259,7 @@ export class Wallet {
     let forged = st.mode === "HYBRID" ? await ftx.signTx(profile, t, this.state.exposedKey, 0) : t;
     const pqIndex = st.mode === "HYBRID" ? 1 : 0;
     forged = { ...forged, signatures: forged.signatures.map((e, i) => (i === pqIndex ? { ...e, signature: stolen } : e)) };
-    return this.expectRejected(forged, `Replayed the signature from ${old.slice(0, 10)}…: rejected`);
+    return this.expectRejected(forged, `Attacker reused the signature from ${old.slice(0, 10)}…: rejected`);
   }
 
   private async expectRejected(t: ftx.FrameTx, kind: string): Promise<RejectedError> {
@@ -288,7 +288,7 @@ export class Wallet {
     const pqIndex = st.mode === "HYBRID" ? 1 : 0;
     const junk = bytesToHex(crypto.getRandomValues(new Uint8Array(8 + 128 * 32 + KEY_TREE_HEIGHT * 32)));
     forged = { ...forged, signatures: forged.signatures.map((e, i) => (i === pqIndex ? { ...e, signature: junk } : e)) };
-    return this.expectRejected(forged, "Attack with the stolen ECDSA key: rejected");
+    return this.expectRejected(forged, "Attacker tried the stolen old key: rejected");
   }
 }
 
