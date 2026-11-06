@@ -119,6 +119,11 @@ export function PixelHero({ slot, calm }: { slot: RefObject<HTMLElement | null>;
       const fy0 = ((oy % pitch) + pitch) % pitch;
       const cb = calm.current?.getBoundingClientRect();
       const calmBox = cb && { l: cb.left - box.left - pitch, t: cb.top - box.top - pitch, r: cb.right - box.left + pitch, b: cb.bottom - box.top + pitch };
+      // Text blocks marked data-clear get no squares at all behind them.
+      const clear = [...host.querySelectorAll("[data-clear]")].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left - box.left - pitch * 0.5, t: r.top - box.top - pitch * 0.5, r: r.right - box.left + pitch * 0.5, b: r.bottom - box.top + pitch * 0.5 };
+      });
       const fr = seeded(1337);
       field = [];
       for (let y = fy0; y < H; y += pitch) {
@@ -128,7 +133,7 @@ export function PixelHero({ slot, calm }: { slot: RefObject<HTMLElement | null>;
           const ey = Math.max(0, (ny - 0.68) / 0.32);
           let p = 0.02 + 0.55 * ex * ex + 0.42 * ey * ey;
           const inWord = x + fsize > rx && x < rx + RC * cell && y + fsize > ry && y < ry + RR * cell;
-          if (inWord) p = 0;
+          if (inWord || clear.some((c) => x + fsize > c.l && x < c.r && y + fsize > c.t && y < c.b)) p = 0;
           else if (calmBox && x + fsize > calmBox.l && x < calmBox.r && y + fsize > calmBox.t && y < calmBox.b) p *= 0.08;
           const on = fr() < p;
           if (p > 0) field.push({ x, y, s: p, tone: fr() < 0.2 ? 2 : 1, a: on ? 1 : 0, on });
@@ -288,6 +293,11 @@ export function PixelHero({ slot, calm }: { slot: RefObject<HTMLElement | null>;
     }
 
     setup();
+    // The web fonts arrive after the first layout and move the text: measure the calm area again.
+    document.fonts?.ready.then(() => {
+      layout();
+      if (still.matches) draw();
+    });
     const ro = new ResizeObserver(() => {
       if (t < INTRO) t = INTRO; // don't replay the intro on every resize
       layout();

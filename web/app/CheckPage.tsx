@@ -231,17 +231,17 @@ export function CheckPage() {
       <section className="hero bleed" aria-label="Lifeboat">
         <PixelHero slot={slot} calm={calm} />
         <div className="hero-body" ref={calm}>
-          <a className="hero-chip" href="/how">
+          <a className="hero-chip" href="/how" data-clear>
             Live on the EIP-8141 test network: a whole account moved in one transaction <ArrowRight size={14} strokeWidth={1.75} />
           </a>
           <div ref={slot} className="hero-slot" role="img" aria-label="Lifeboat" />
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <h1>Move your Ethereum account to quantum-safe keys</h1>
-            <p className="sub">
-              Most accounts have already revealed what a future quantum computer needs to take them over. Lifeboat checks
-              yours, then moves everything somewhere it can't follow.
+            <h1 data-clear>Move your Ethereum account to quantum-safe keys</h1>
+            <p className="sub" data-clear>
+              Most accounts have already revealed what a quantum computer would need. Lifeboat checks yours and moves
+              everything out of reach.
             </p>
-            <div className="ctas">
+            <div className="ctas" data-clear>
               <button className="btn primary" onClick={toCheck}>
                 <Search size={16} strokeWidth={2} /> Check an address
               </button>
@@ -422,7 +422,7 @@ export function CheckPage() {
               </div>
               <div className="act">
                 {s.go ? (
-                  <button className={`btn ${i === 0 ? "primary" : "secondary"}`} onClick={s.go}>
+                  <button className="btn secondary" onClick={s.go}>
                     {s.cta}
                   </button>
                 ) : (
@@ -430,7 +430,6 @@ export function CheckPage() {
                     {s.cta} <ArrowRight size={16} strokeWidth={1.75} />
                   </a>
                 )}
-                <span className="meta">Step {i + 1} of 4</span>
               </div>
             </li>
           ))}
