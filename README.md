@@ -16,18 +16,37 @@ such path exists yet. Lifeboat is that path:
 3. **Live in hybrid mode** (ECDSA *and* a hash-based signature), then **switch to
    quantum-safe only** when ECDSA can no longer be trusted.
 
-Everything below ran on the public ERC-8421 alt-mempool devnet (chain 1337) on Nov 5–6, 2026. The devnet
-was reset on the afternoon of Nov 6, so the transactions in this table are no longer on its explorer. After
-the reset we redeployed (same contract addresses) and re-ran the whole flow from the browser three times;
-the latest fully sponsored migration, account creation included, is
-`0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150`.
+**See it on the devnet explorer:** a fully sponsored migration, the account created inside the same
+transaction, admitted by the ERC-8421 alt mempool and mined:
+[`0xa1a2907a…d150`](https://explorer.altmempool.wtf/tx/0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150) (block 488, 6 of 6 frames succeed).
 
 ## What it does, live
+
+Everything here ran on the public ERC-8421 alt-mempool devnet (chain 1337). The devnet was reset on
+the afternoon of Nov 6, 2026; we redeployed (the contracts landed at the same addresses) and ran
+everything again.
+
+### After the reset (Nov 6)
+
+| What | Transaction | Result |
+|---|---|---|
+| **Fully sponsored migration, account created in the same transaction** | [`0xa1a2907a…d150`](https://explorer.altmempool.wtf/tx/0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150), block 488 | 1.0000 ETH + 2,400 dUSD moved, 6 of 6 frames succeed, 7,872,284 gas, all paid by the sponsor |
+| Two more, from the browser | `0xa339f72c…03cc` (block 366), `0x699e9299…996e` (block 463) | Same result |
+| **The same signed migration, sent to the public mempool** | *(refused)* | `StorageReadNonSender`: the sponsor reads the factory's registry during validation, which only the alt mempool allows |
+| Send with both signatures, two attacks with the stolen ECDSA key (a forged quantum-safe signature, a replayed real one), switch to quantum-safe only, send, attack again | in the app's activity list | Both sends mined; every attack refused with `LifeboatAccount.BadPqSignature()` |
+| Public log on Arkiv | entities `0x97c595c1…`, `0xa85e9919…`, `0x072b7238…` | Each row checks out against the chain from the Public log page |
+
+The whole browser flow above was driven in Chromium three times on the reset devnet (Move → Use it →
+Try to break in → turn off the old key → attack again), each run 2 to 2.5 minutes.
+
+### Before the reset (Nov 5–6)
+
+These transactions are no longer on the devnet's explorer; they're kept as the record of the first runs.
 
 | Step | Transaction | Result |
 |---|---|---|
 | **Fully sponsored migration: the account is created inside the same transaction** (Nov 6) | `0x02f89fb8…9b83`, block 406,552 | All 6 frames succeed: approval, sponsor check, create account, ETH, dUSD, record. 7.87M gas, all paid by the sponsor |
-| Sponsored migration: 1.0000 ETH + 2,400 dUSD from an exposed EOA into its Lifeboat account | [`0xe0645ace…b02c`](https://explorer.altmempool.wtf/) | All 5 frames succeed, old EOA left at exactly 0, the sponsor paid 0.000589 ETH of gas |
+| Sponsored migration: 1.0000 ETH + 2,400 dUSD from an exposed EOA into its Lifeboat account | `0xe0645ace…b02c` | All 5 frames succeed, old EOA left at exactly 0, the sponsor paid 0.000589 ETH of gas |
 | Send in HYBRID mode (ECDSA + XMSS) | `0x9995dc0c…0a34` | Admitted, mined |
 | Attacker with the old ECDSA private key and a forged quantum-safe signature | *(rejected)* | `LifeboatAccount.BadPqSignature()` |
 | Switch to PQ_ONLY | `0x758ea20e…61ab` | Admitted, mined |
@@ -162,16 +181,20 @@ something only the alt mempool allows.
 
 | Page | What it does |
 |---|---|
-| Check | Exposure check for any mainnet address, every read over Anon-RPC (Tor, falling back to the Nym mixnet). Hero: the pixel-grid wordmark |
-| Move aboard | Five steps: a demo account with an exposed key, 1,024 keys made in a Web Worker, backup, review, one sponsored migration |
-| Account | Balances, send, the one-way switch to quantum-safe only, the 32 × 32 key grid, activity, the Arkiv entry |
-| Q-day test | Two real attacks with the stolen ECDSA key: a forged quantum-safe signature, and a genuine one replayed from an earlier tx. Both refused by the mempool |
-| Public log | The Arkiv feed, filters, "did this address move?", and a button that re-derives any row from the devnet |
-| How it works | The scheme, why the alt mempool, privacy, prior art, limits |
+| 1 · Check | Home page: a pixel-grid hero, the problem in three steps, and an exposure check for any mainnet address. Every read goes over Anon-RPC: Tor first, the Nym mixnet if Tor's gateway is slow or down |
+| 2 · Move | Five steps: a practice account with an exposed key, 1,024 keys made in a Web Worker, backup, review, one sponsored migration. A panel sends the same signed migration to the public mempool to show it refused |
+| 3 · Use it | Balances, send, the one-way switch to quantum-safe only, the 32 × 32 key grid, activity, the Arkiv entry |
+| 4 · Try to break in | Two real attacks with the stolen ECDSA key: a forged quantum-safe signature, and a genuine one replayed from an earlier tx. Both refused by the mempool |
+| Public log | The Arkiv feed, filters, "did this address move?", and "Check against the chain" on every row |
+| How it works | The short version in plain words, then the scheme, why the alt mempool, privacy, prior art, limits |
 
-The whole flow was driven end to end in Chromium on the live devnet (Nov 5): migration
-`0x1cb0efcf…72cc04`, hybrid send, both attacks refused (`BadPqSignature`), switch to
-quantum-safe only, a send with the quantum-safe signature alone, the forgery refused again.
+The nav is the journey: each of the four steps gets a tick once it's done. Technical terms carry a
+plain-language definition on hover, and every page ends with the next step.
+
+The whole flow was driven end to end in Chromium on the live devnet, three times after the Nov 6
+reset (latest migration [`0xa1a2907a…d150`](https://explorer.altmempool.wtf/tx/0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150)): hybrid send, both attacks refused
+(`BadPqSignature`), switch to quantum-safe only, a send with the quantum-safe signature alone, the
+forgery refused again.
 If the shared faucet is empty, the Move page shows the demo address to fund and continues on
 its own once ETH arrives.
 
@@ -190,9 +213,13 @@ Readers trust only entries owned by the deployment's publisher wallet. Schema an
 [`arkiv/`](arkiv/).
 
 - Publisher wallet: `0x09Ad723E95ad58D9b963c93dc212fC4DfdAe3631`
+- Latest entries (after the devnet reset): `0x072b7238c9ab8f256aebec032d03f37ae081e81428a93ccdd13aa82412a89386`
+  (the migration linked at the top), `0xa85e991934e3f8976b0fbd88d66e6b91b105d0ef753c24076c11bbda9e7c98d6`,
+  `0x97c595c11a251457c7cdf61c14eb55e41c8dc0d8da3ed42695bafe101b470bf7`. Each checks out against the chain.
 - First entry: `0x2bf86f4fb65770ebc7a4da64ad7c51ebc43ac6244597cae2ef7da865a9dbaf38`
-  (Arkiv tx `0x745669bc99016628f112f6ed605ca795a19822cd19e7d140941da117b14f6c07`): the
-  sponsored migration above, 1.0000 ETH + 2,400.00 dUSD
+  (Arkiv tx `0x745669bc99016628f112f6ed605ca795a19822cd19e7d140941da117b14f6c07`), from before the
+  reset. Entries whose transaction the devnet no longer has show "Doesn't match" in the app, which is
+  the right answer; the page lists entries newest-listed first.
 - One query you can run:
 
 ```ts
@@ -236,6 +263,7 @@ pnpm devnet send              # PQ only
 pnpm devnet sponsor-checks    # canonical vs alt mempool, and the sponsor's guardrails
 pnpm devnet publish           # opt in: list the migration on the Arkiv log (needs tGLM, see pnpm arkiv:key)
 pnpm devnet fund <address>    # send 0.1 devnet ETH from the operator when the shared faucet is empty
+pnpm devnet status            # are our contracts on the chain (after a reset)? operator and sponsor balances
 pnpm arkiv                    # read the log
 ```
 
@@ -250,7 +278,17 @@ addresses after redeploying).
 | LifeboatFactory | `0xb343620fe0f4125acb960e7613ddcd7a3ce0f494` |
 | MigrationSponsor (staked 0.012 ETH) | `0x4b94121f0343a95c90e9fd6bb3e0d6fa7448ed0c` |
 | DemoToken (dUSD, test only) | `0x53af43f3d696bef8e7fb022b8a707f7103f952a0` |
-| Migrated Lifeboat account | `0x94a8eC3865A9Dbb50778361eD05a1f17af296d62` |
+| Migrated Lifeboat account (after the reset) | `0x14970814120b08E4b976C1E0072c16BB493BBE7e` |
+
+After the reset:
+
+| Step | Tx hash |
+|---|---|
+| migrate (fully sponsored, creates the account) | [`0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150`](https://explorer.altmempool.wtf/tx/0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150) |
+| migrate | `0x699e92993a2681dee7d346a9558e6d86b59ba36631f39e635405515f9453996e` |
+| migrate | `0xa339f72ce69cf0913e0bfbb2e41453004740dc7391d8221c44d2934e5bba03cc` |
+
+Before the reset (no longer on the devnet), the CLI run into `0x94a8eC3865A9Dbb50778361eD05a1f17af296d62`:
 
 | Step | Tx hash |
 |---|---|
@@ -276,20 +314,29 @@ addresses after redeploying).
   there; the sponsored migration doesn't).
 - The sponsor's "exposed" test is nonce > 0. An EIP-7702 delegated EOA with nonce 0 is
   exposed too, but the sponsor can't see its code during validation.
-- The Tor exposure check relies on the tor-js demo gateway, which the Anon-RPC docs call
-  limited capacity.
+- The Tor route of the exposure check relies on the tor-js demo gateway, which the Anon-RPC docs
+  call limited capacity. It went down on Nov 6; the check now falls back to the Nym mixnet
+  (about 25 s to connect) and, if neither connects, offers a direct check labelled as not private.
+- The alt mempool sometimes gives up on a valid transaction its relayer couldn't get into a block
+  ("relayed 4 times without being included", seen once on Nov 6). The app watches for that and
+  hands the same signed bytes back.
+- The sponsor pays about 0.02 devnet ETH per migration (account creation is ~7.7M state gas);
+  `pnpm devnet status` shows its balance.
 
 ## Credits
-- The hero figure, `web/figure/davits.js`, is a lifeboat on its davits drawn for Lifeboat with
-  the `hairline-create` skill, on the engine of [Hairline](https://github.com/lucasmarkes/hairline)
-  by Lucas Marques (MIT). `web/figure/kernel.js` is that engine, copied unchanged. The pointer's
-  height lowers the boat to the water. Standalone page: `web/figure/hairline-davits.html`.
-- Interface checked against [unslop](https://heydamir.design/unslop) by Damir Sokolovsky (CC BY 4.0).
+- The hero is a canvas drawn for Lifeboat (`web/app/PixelHero.tsx`): the wordmark, in its own pixel
+  lettering, is etched in by signals running across a grid, and the pointer breaks it up.
+- An earlier hero, `web/figure/davits.js` (a lifeboat on its davits, drawn with the `hairline-create`
+  skill on the engine of [Hairline](https://github.com/lucasmarkes/hairline) by Lucas Marques, MIT),
+  is kept in the repo but no longer shown. `web/figure/kernel.js` is that engine, copied unchanged.
+- The first version of the interface was checked against [unslop](https://heydamir.design/unslop) by
+  Damir Sokolovsky (CC BY 4.0); the current design came after that pass.
 - Anon-RPC (Ethereum Foundation), Arkiv SDK, `@forshtat/hegota-support` (alt-mempool workshop).
 
 ## How AI was used
 Claude Code (Anthropic) helped research the idea and prior art, write and test the code
-(signer, contracts, devnet scripts, exposure check), and draft this README. Every devnet
+(signer, contracts, devnet scripts, exposure check, the web app and its design), drive the
+browser tests on the live devnet, and draft this README and the demo script. Every devnet
 result above comes from real runs.
 
 ## License

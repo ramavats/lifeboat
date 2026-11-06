@@ -379,7 +379,16 @@ async function fund() {
 async function status() {
   const s = load();
   console.log(JSON.stringify({ operator: addr(s.operatorKey), exposed: addr(s.exposedKey), factory: s.factory, sponsor: s.sponsor, token: s.token, lifeboat: s.lifeboat }, null, 2));
-  if (s.lifeboat) console.log(await readState(s.lifeboat), `${fmt(await balanceOf(s.lifeboat))} ETH`);
+  // The pre-recording check: are our contracts still on the chain, and is there gas to spare?
+  const deployed = async (a?: Address) => !!a && (await call("eth_getCode", [a, "latest"])) !== "0x";
+  const ok = (await deployed(s.factory)) && (await deployed(s.sponsor)) && (await deployed(s.token));
+  console.log(ok ? "contracts: deployed" : "contracts: MISSING. The devnet was probably reset: run `pnpm devnet setup` and update web/lib/deployment.ts");
+  console.log(`operator: ${fmt(await balanceOf(addr(s.operatorKey)))} ETH (keep at least 0.15 for emergencies)`);
+  if (s.sponsor) console.log(`sponsor: ${fmt(await balanceOf(s.sponsor))} ETH to pay for migrations`);
+  if (s.lifeboat) {
+    if (await deployed(s.lifeboat)) console.log(await readState(s.lifeboat), `${fmt(await balanceOf(s.lifeboat))} ETH`);
+    else console.log(`lifeboat ${s.lifeboat}: not on this chain (created before a reset)`);
+  }
   for (const l of s.log) console.log(`  ${l.step.padEnd(8)} ${l.hash}`);
 }
 
