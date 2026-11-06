@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Copy, Download } from "lucide-react";
+import { deployment } from "../lib/deployment.js";
 import { backupBlob } from "../lib/store.js";
 import { dusd, eth, int, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
@@ -197,8 +198,11 @@ export function MovePage() {
             >
               {moved ? (
                 <>
-                  Done in one transaction <span className="mono">{short(wallet.state.migration!.hash, 10, 6)}</span>. The old
-                  account is empty and your funds are in the new one.
+                  Done in one transaction{" "}
+                  <a className="mono" href={deployment.txUrl(wallet.state.migration!.hash)} target="_blank" rel="noreferrer">
+                    {short(wallet.state.migration!.hash, 10, 6)}
+                  </a>
+                  . The old account is empty and your funds are in the new one.
                 </>
               ) : (
                 <>

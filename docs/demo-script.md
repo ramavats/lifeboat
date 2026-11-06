@@ -59,7 +59,9 @@ Open **How this was checked** for a second.
 transaction** → **Make keys** (pause on "1,024 one-time keys, made in this browser") →
 **Download** → **I saved it** → **Try the public mempool first** (the panel shows "Refused") →
 **Move everything**. *Cut the wait.* Show "Done in one transaction. The old account is empty and
-your funds are in the new one." and the panel's second row: "Let in and done".
+your funds are in the new one." and the panel's second row: "Let in and done". Then click the
+transaction hash in that line: the explorer opens on it, showing **On chain**, the payer (our
+sponsor) and its six frames. Hold for about 3 seconds, then switch back to the app tab.
 
 **Say:**
 > Here's a practice account in the same situation. Lifeboat makes it a new set of quantum-safe
@@ -68,7 +70,7 @@ your funds are in the new one." and the panel's second row: "Let in and done".
 > Then one click creates the new account and moves everything into it, the ETH and the tokens,
 > in a single transaction. All of it moves, or none of it does. And it's free: a sponsor pays
 > the fee. Ethereum's normal mempool refuses this transaction. The new alternative mempool lets
-> it in. Done. The old account is empty.
+> it in. Done. The old account is empty, and here it is on the network's explorer.
 
 ---
 

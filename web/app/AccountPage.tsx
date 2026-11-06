@@ -227,7 +227,7 @@ export function AccountPage() {
                   </span>
                   <span className="meta">
                     {a.hash ? (
-                      <a href={deployment.explorer} target="_blank" rel="noreferrer" title={a.hash}>
+                      <a href={deployment.txUrl(a.hash)} target="_blank" rel="noreferrer" title={`${a.hash} on the explorer`}>
                         {short(a.hash, 6, 4)} <ArrowUpRight size={12} strokeWidth={1.5} />
                       </a>
                     ) : null}{" "}

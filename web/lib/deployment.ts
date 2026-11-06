@@ -13,6 +13,8 @@ export const deployment = {
   /** Where demo sends go: the devnet workshop's recipient. */
   recipient: "0x8943545177806ED17B9F23F0a21ee5948eCaa776" as Address,
   explorer: "https://explorer.altmempool.wtf/",
+  /** A transaction's page on the explorer. */
+  txUrl: (hash: string) => `https://explorer.altmempool.wtf/tx/${hash}`,
 };
 
 export const KEY_TREE_HEIGHT = 10;
