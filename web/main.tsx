@@ -10,6 +10,7 @@ import { QdayPage } from "./app/QdayPage.js";
 import { CodeXml } from "lucide-react";
 import { Mark, SmallWordmark } from "./app/PixelArt.js";
 import { STEPS, StepMark, Term, progress } from "./app/guide.js";
+import { PAGES } from "./seo.js";
 import { WalletProvider, useWallet } from "./app/wallet-context.js";
 import { saveWallet, type WalletState } from "./lib/store.js";
 
@@ -66,7 +67,7 @@ function useRoute(): Route {
   }, []);
   // Each page gets its own tab title.
   useEffect(() => {
-    document.title = r === "/" ? "Lifeboat" : `${ROUTES[r]} · Lifeboat`;
+    document.title = PAGES[r].title;
   }, [r]);
   return r;
 }

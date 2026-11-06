@@ -9,9 +9,10 @@
     "devnet": "tsx scripts/devnet.ts",
     "exposure": "tsx scripts/exposure.ts",
     "web": "vite",
-    "web:build": "vite build",
+    "web:build": "vite build && tsx scripts/pages.ts",
     "arkiv": "tsx scripts/arkiv.ts",
-    "arkiv:key": "tsx scripts/arkiv-key.ts"
+    "arkiv:key": "tsx scripts/arkiv-key.ts",
+    "og": "tsx scripts/og.ts"
   },
   "author": "",
   "license": "MIT",
@@ -37,6 +38,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
+    "playwright-core": "1.64.1",
     "solc": "0.8.28",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

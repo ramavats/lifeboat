@@ -6,8 +6,8 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/(move|account|qday|log|how)",
-      "destination": "/index.html"
+      "source": "/:page(move|account|qday|log|how)",
+      "destination": "/:page/index.html"
     }
   ]
 }

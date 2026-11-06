@@ -266,6 +266,7 @@ pnpm devnet sponsor-checks    # canonical vs alt mempool, and the sponsor's guar
 pnpm devnet publish           # opt in: list the migration on the Arkiv log (needs tGLM, see pnpm arkiv:key)
 pnpm devnet fund <address>    # send 0.1 devnet ETH from the operator when the shared faucet is empty
 pnpm devnet status            # are our contracts on the chain (after a reset)? operator and sponsor balances
+pnpm og                       # redraw the share images, the cover (docs/cover.png) and the icons
 pnpm arkiv                    # read the log
 ```
 
