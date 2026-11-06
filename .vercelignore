@@ -1,0 +1,8 @@
+# Never upload secrets or local state to Vercel
+.env
+.env.*
+.lifeboat-state*.json
+.memory/
+node_modules/
+out/
+dist/

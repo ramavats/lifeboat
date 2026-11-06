@@ -16,6 +16,8 @@ such path exists yet. Lifeboat is that path:
 3. **Live in hybrid mode** (ECDSA *and* a hash-based signature), then **switch to
    quantum-safe only** when ECDSA can no longer be trusted.
 
+**Try it live:** https://lifeboat-iota.vercel.app (test network, test money; keys stay in your browser).
+
 **See it on the devnet explorer:** a fully sponsored migration, the account created inside the same
 transaction, admitted by the ERC-8421 alt mempool and mined:
 [`0xa1a2907a…d150`](https://explorer.altmempool.wtf/tx/0xa1a2907a580b8b5badd5073e12b04e40a1cd40784164896b18f48d4493a7d150) (block 488, 6 of 6 frames succeed).
