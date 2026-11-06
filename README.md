@@ -321,9 +321,9 @@ Before the reset (no longer on the devnet), the CLI run into `0x94a8eC3865A9Dbb5
   hunting for it slowed Nym down in the same tab, so the check now uses the Nym mixnet first and
   Tor only as a backup. Nym connects in about 12–20 s, but its reads sometimes hit the worker's
   time limit. The check keeps every read that answers and retries only a stalled one, each retry
-  over a fresh route (another isolation key for the same address), up to three tries per read.
-  After 80 s it says the private network is too slow and offers a direct check labelled as not
-  private. Nym goes through bad patches: in our tests on Nov 6 a check finished privately in
+  over a fresh route (another isolation key for the same address). If an attempt stalls for 40 s,
+  it opens a fresh Nym connection and tries once more; then it says the private network is too
+  slow and offers a direct check labelled as not private. Nym goes through bad patches: in our tests on Nov 6 a check finished privately in
   25–70 s most of the time, and during one bad patch about half the checks ran out of time.
 - The alt mempool sometimes gives up on a valid transaction its relayer couldn't get into a block
   ("relayed 4 times without being included", seen once on Nov 6). The app watches for that and

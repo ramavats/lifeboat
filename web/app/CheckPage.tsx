@@ -21,11 +21,14 @@ const BACKUP_MS = 30_000;
 const GIVE_UP_MS = 90_000;
 /**
  * A private check keeps every read that answers and retries only the ones that stall, each retry
- * over a fresh route (isolation key), up to READ_TRIES per read. After CHECK_MS it gives up and
- * offers a direct check instead.
+ * over a fresh route (isolation key), up to READ_TRIES per read, for ATTEMPT_MS. If that stalls,
+ * it opens a fresh connection and makes one more attempt; then it gives up and offers a direct
+ * check instead.
  */
-const READ_TRIES = 3;
-const CHECK_MS = 80_000;
+const READ_TRIES = 2;
+const ATTEMPT_MS = 40_000;
+/** If an attempt stalls, the check reconnects once (within this long) and tries again. */
+const RECONNECT_MS = 30_000;
 
 /**
  * One private connection per page load, warmed up before anyone types an address. The Nym mixnet
@@ -100,7 +103,28 @@ function useAnon() {
       else if (net.state === "failed") resolve(null);
       else waiters.current.push(resolve);
     });
-  return { net, ready };
+
+  /**
+   * Drop the current connection and open a fresh Nym one. When a connection goes bad every read on
+   * it stalls, whatever the isolation key; a new client picks its route through the mixnet again.
+   */
+  const renew = async (): Promise<AnonSession | null> => {
+    const old = session.current;
+    session.current = null;
+    old?.close();
+    const t0 = performance.now();
+    const s = startAnon("nym", MAINNET_RPC, (line) => import.meta.env.DEV && console.debug("anon-rpc", line));
+    try {
+      await Promise.race([s.worker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), RECONNECT_MS))]);
+    } catch {
+      s.close();
+      return null;
+    }
+    session.current = s;
+    setNet({ state: "ready", network: "nym", secs: (performance.now() - t0) / 1000 });
+    return s;
+  };
+  return { net, ready, renew };
 }
 
 const STATUS = {
@@ -110,13 +134,13 @@ const STATUS = {
 } as const;
 
 export function CheckPage() {
-  const { net, ready } = useAnon();
+  const { net, ready, renew } = useAnon();
   const [address, setAddress] = useState("");
   const [result, setResult] = useState<(Exposure & { secs: number; via: NetworkId | "direct" }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** The private check didn't work out: offer the direct one next to the error. */
   const [offerDirect, setOfferDirect] = useState(false);
-  const [busy, setBusy] = useState<false | "waiting" | "checking">(false);
+  const [busy, setBusy] = useState<false | "waiting" | "checking" | "reconnecting">(false);
   const slot = useRef<HTMLDivElement>(null);
   const calm = useRef<HTMLDivElement>(null);
   const checkRef = useRef<HTMLElement>(null);
@@ -153,25 +177,36 @@ export function CheckPage() {
         // The checked address is the isolation key, so checks of different addresses can't be
         // linked. A read's retry adds a suffix: same address, fresh route through the network.
         const base = a.toLowerCase();
-        const tries = new Map<number, number>();
-        const s = session;
-        const rpc = new RpcClient(
-          MAINNET_RPC,
-          (url, init) => {
-            const id = (JSON.parse(String(init.body)) as { id: number }).id;
-            const n = (tries.get(id) ?? 0) + 1;
-            tries.set(id, n);
-            return s.fetchFor(n === 1 ? base : `${base}#${n}`)(url, init);
-          },
-          READ_TRIES,
-        );
-        try {
-          r = await Promise.race([
+        const attempt = (conn: AnonSession) => {
+          const tries = new Map<number, number>();
+          const rpc = new RpcClient(
+            MAINNET_RPC,
+            (url, init) => {
+              const id = (JSON.parse(String(init.body)) as { id: number }).id;
+              const n = (tries.get(id) ?? 0) + 1;
+              tries.set(id, n);
+              return conn.fetchFor(n === 1 ? base : `${base}#${n}`)(url, init);
+            },
+            READ_TRIES,
+          );
+          return Promise.race([
             checkExposure(rpc, a),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer in ${CHECK_MS / 1000} s`)), CHECK_MS)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer in ${ATTEMPT_MS / 1000} s`)), ATTEMPT_MS)),
           ]);
-        } catch (e) {
-          throw new Error(`the private network is too slow right now (${(e as Error).message})`);
+        };
+        try {
+          r = await attempt(session);
+        } catch {
+          setBusy("reconnecting");
+          const fresh = await renew();
+          if (!fresh) throw new Error("the private network is too slow right now (it couldn't reconnect)");
+          via = fresh.network;
+          setBusy("checking");
+          try {
+            r = await attempt(fresh);
+          } catch (e) {
+            throw new Error(`the private network is too slow right now (${(e as Error).message}, after reconnecting once)`);
+          }
         }
       }
       setResult({ ...r, secs: (performance.now() - t0) / 1000, via });
@@ -245,7 +280,7 @@ export function CheckPage() {
                 </button>
               ) : (
                 <button className="btn primary" disabled={!!busy || !address.trim()}>
-                  {busy === "waiting" ? "Connecting" : busy ? "Checking" : "Check"}
+                  {busy === "waiting" ? "Connecting" : busy === "reconnecting" ? "Reconnecting" : busy ? "Checking" : "Check"}
                 </button>
               )}
             </form>
