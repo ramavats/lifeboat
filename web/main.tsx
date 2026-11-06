@@ -25,10 +25,13 @@ type Route = keyof typeof ROUTES;
 
 const isRoute = (p: string): p is Route => p in ROUTES;
 
-// Links from before clean paths (/#/move) still work: turn them into /move once, on load.
-if (location.hash.startsWith("#/") && isRoute(location.hash.slice(1))) {
-  history.replaceState(null, "", location.hash.slice(1) + location.search);
+/** Links from before clean paths (/#/move) still work: turn them into /move. */
+function fromOldLink() {
+  if (location.hash.startsWith("#/") && isRoute(location.hash.slice(1))) {
+    history.replaceState(null, "", location.hash.slice(1) + location.search);
+  }
 }
+fromOldLink();
 
 /** The current page, from the path. In-app links change it without reloading the page. */
 function useRoute(): Route {
@@ -50,10 +53,14 @@ function useRoute(): Route {
       if (url.pathname !== location.pathname) history.pushState(null, "", url.pathname);
       show();
     };
+    // An old /#/... link followed from the page we're on changes only the hash, not the page.
+    const onHash = () => (fromOldLink(), show());
     addEventListener("popstate", show);
+    addEventListener("hashchange", onHash);
     document.addEventListener("click", onClick);
     return () => {
       removeEventListener("popstate", show);
+      removeEventListener("hashchange", onHash);
       document.removeEventListener("click", onClick);
     };
   }, []);
