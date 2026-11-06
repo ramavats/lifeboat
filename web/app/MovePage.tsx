@@ -3,7 +3,7 @@ import { Copy, Download } from "lucide-react";
 import { backupBlob } from "../lib/store.js";
 import { dusd, eth, int, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
-import { Details, Next, Term } from "./guide.js";
+import { Details, Next, Term, Typed } from "./guide.js";
 
 function Step(p: { n: number; state: "done" | "active" | "todo"; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
@@ -59,7 +59,7 @@ export function MovePage() {
   return (
     <>
       <p className="meta" style={{ margin: "0 0 8px" }}>Step 2 of 4</p>
-      <h1>Move an account to safety</h1>
+      <Typed as="h1" text="Move an account to safety" />
       <p className="lede">
         You'll get a practice account that's in the same spot as most real ones: its key is already{" "}
         <Term t="exposed key">exposed</Term>. Then you'll move everything in it to a new Lifeboat account. Five short steps,

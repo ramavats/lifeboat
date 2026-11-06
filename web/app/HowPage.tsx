@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Typed } from "./guide.js";
 
 function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
@@ -17,7 +18,7 @@ const Tx = ({ h }: { h: string }) => <span className="mono small">{h.slice(0, 10
 export function HowPage() {
   return (
     <>
-      <h1>How Lifeboat works</h1>
+      <Typed as="h1" text="How Lifeboat works" />
       <p className="lede">The short version first, then the details for developers.</p>
 
       <section className="card" style={{ maxWidth: 820, marginBottom: 48 }}>

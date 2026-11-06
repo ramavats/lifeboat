@@ -172,10 +172,10 @@ importers:
       '@arkiv-network/sdk':
         specifier: 1.0.1
         version: 1.0.1(typescript@7.0.2)(viem@2.57.16(typescript@7.0.2))
-      '@fontsource/ibm-plex-mono':
+      '@fontsource-variable/geist':
         specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/ibm-plex-sans':
+      '@fontsource-variable/jetbrains-mono':
         specifier: ^5.3.0
         version: 5.3.0
       '@forshtat/hegota-support':
@@ -438,11 +438,11 @@ packages:
     resolution: {integrity: sha512-PhezOVe4DFaC+QLIsnK/tiOaXjpjS2F9AH4Ez0EfWevFw9NWNSg95l7I0dWuHF0B7v9odm2Ijqwo0EnARXtUmA==}
     engines: {node: '>=20'}
 
-  '@fontsource/ibm-plex-mono@5.3.0':
-    resolution: {integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q==}
+  '@fontsource-variable/geist@5.3.0':
+    resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
 
-  '@fontsource/ibm-plex-sans@5.3.0':
-    resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
+  '@fontsource-variable/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
 
   '@forshtat/hegota-support@0.0.1':
     resolution: {integrity: sha512-F6ZvduwrMBjzjoYE85DH7JHRaDyx2V2+kgSsi2eUDLiAJR1uiqp6mRzkYOLA+Y3pjxDpw60Z07mTer/4bebcZQ==}
@@ -1333,9 +1333,9 @@ snapshots:
       '@noble/curves': 2.4.0
       '@noble/hashes': 2.4.0
 
-  '@fontsource/ibm-plex-mono@5.3.0': {}
+  '@fontsource-variable/geist@5.3.0': {}
 
-  '@fontsource/ibm-plex-sans@5.3.0': {}
+  '@fontsource-variable/jetbrains-mono@5.3.0': {}
 
   '@forshtat/hegota-support@0.0.1(solc@0.8.28(debug@4.4.3))(viem@2.57.16(typescript@7.0.2))':
     dependencies:

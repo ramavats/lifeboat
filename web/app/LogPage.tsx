@@ -6,7 +6,7 @@ import { call } from "../../src/frame/devnet.js";
 import { summarizeMigrationTx } from "../../src/frame/migrate.js";
 import { deployment } from "../lib/deployment.js";
 import { eth, int, short } from "./format.js";
-import { Term } from "./guide.js";
+import { Term, Typed } from "./guide.js";
 
 type Filter = "all" | "sponsored" | "self";
 type Verdict = { state: "checking" } | { state: "ok" } | { state: "mismatch"; why: string };
@@ -87,7 +87,7 @@ export function LogPage() {
 
   return (
     <>
-      <h1>Public list of moves</h1>
+      <Typed as="h1" text="Public list of moves" />
       <p className="lede">
         Accounts whose owners chose to share that they moved to Lifeboat. It holds only facts already public in each move,
         kept on <Term t="Arkiv" /> so the record lasts after the test network resets. Don't take the list's word for it:

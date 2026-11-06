@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import type { WalletState } from "../lib/store.js";
 
@@ -102,5 +102,32 @@ export function Next({ href, title, children }: { href: string; title: string; c
       </span>
       <ArrowRight size={20} strokeWidth={1.5} />
     </a>
+  );
+}
+
+/**
+ * A heading that types itself out the first time it scrolls into view, then keeps a blinking
+ * cursor. The full text reserves the space and is what screen readers get.
+ */
+export function Typed({ text, as = "h2", className = "" }: { text: string; as?: "h1" | "h2"; className?: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  const still = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [n, setN] = useState(still ? text.length : 0);
+  useEffect(() => {
+    if (still || !ref.current) return;
+    let id = 0;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e?.isIntersecting) return;
+      io.disconnect();
+      id = window.setInterval(() => setN((k) => (k >= text.length ? (clearInterval(id), k) : k + 1)), 34);
+    });
+    io.observe(ref.current);
+    return () => (io.disconnect(), clearInterval(id));
+  }, [text, still]);
+  return createElement(
+    as,
+    { ref, className: `typed ${className}`, "aria-label": text },
+    <span className="ghost" aria-hidden>{text}</span>,
+    <span className="ink" aria-hidden>{text.slice(0, n)}</span>,
   );
 }

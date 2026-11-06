@@ -6,7 +6,7 @@ import { deployment, KEY_TREE_HEIGHT } from "../lib/deployment.js";
 import { KeyGrid } from "./KeyGrid.js";
 import { ago, dusd, eth, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
-import { Next, Term } from "./guide.js";
+import { Next, Term, Typed } from "./guide.js";
 
 function useLog(lifeboat: Address | undefined) {
   const [rows, setRows] = useState<LogRow[] | null>(null);
@@ -57,7 +57,7 @@ export function AccountPage() {
       <div className="row between" style={{ alignItems: "flex-end", flexWrap: "wrap", marginBottom: 32 }}>
         <div>
           <p className="meta" style={{ margin: "0 0 8px" }}>Step 3 of 4 · on the test network</p>
-          <h1 style={{ margin: "0 0 8px" }}>Your Lifeboat account</h1>
+          <Typed as="h1" text="Your Lifeboat account" />
           <p className="mono t2" style={{ margin: 0, overflowWrap: "anywhere" }}>{wallet.state.lifeboat}</p>
         </div>
         <span className="status">

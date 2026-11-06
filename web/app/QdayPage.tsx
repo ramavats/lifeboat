@@ -3,7 +3,7 @@ import { KeyRound, Repeat, ShieldCheck } from "lucide-react";
 import { reasonText, type RejectedError } from "../lib/wallet.js";
 import { eth, short } from "./format.js";
 import { useAction, useWallet } from "./wallet-context.js";
-import { Next, Term } from "./guide.js";
+import { Next, Term, Typed } from "./guide.js";
 
 type Result = { at: number; kind: "forge" | "replay"; reason: string; raw: string };
 
@@ -40,7 +40,7 @@ export function QdayPage() {
   return (
     <>
       <p className="meta" style={{ margin: "0 0 8px" }}>Step 4 of 4</p>
-      <h1>Try to break in</h1>
+      <Typed as="h1" text="Try to break in" />
       <p className="lede">
         It's <Term t="Q-day" />. You're the attacker, and a quantum computer has handed you the old account's{" "}
         <Term t="private key" />. On any normal account that's game over. Try to take the money from the Lifeboat account.

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { ArrowRight, Play, Search } from "lucide-react";
 import { RpcClient, checkExposure, type Exposure } from "../../src/exposure/check.js";
 import { NETWORKS, startAnon, type AnonSession } from "../anon.js";
 import { eth, int } from "./format.js";
-import { LifeboatFigure } from "./LifeboatFigure.js";
-import { Details, Next, StepMark, Term, markChecked } from "./guide.js";
+import { Details, Next, StepMark, Term, Typed, markChecked } from "./guide.js";
+import { Mark } from "./PixelArt.js";
+import { PixelHero } from "./PixelHero.js";
 
 const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 
@@ -45,6 +46,13 @@ export function CheckPage() {
   const [result, setResult] = useState<(Exposure & { secs: number }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const slot = useRef<HTMLDivElement>(null);
+  const calm = useRef<HTMLDivElement>(null);
+  const checkRef = useRef<HTMLElement>(null);
+  const toCheck = () => {
+    checkRef.current?.scrollIntoView({ block: "start" });
+    setTimeout(() => checkRef.current?.querySelector("input")?.focus({ preventScroll: true }), 400);
+  };
 
   async function check(e?: React.FormEvent) {
     e?.preventDefault();
@@ -67,143 +75,224 @@ export function CheckPage() {
     }
   }
 
+  const STEPS_HOME = [
+    { href: "#/", title: "Check", text: "See whether an address has revealed its key. Private: the check goes through Tor.", cta: "Check an address", go: toCheck },
+    { href: "#/move", title: "Move", text: "Get a practice account and move all of it into a Lifeboat account, in one free transaction.", cta: "Move a practice account" },
+    { href: "#/account", title: "Use it", text: "Send money from the new account and watch one of its 1,024 one-time keys get used up.", cta: "Open your account" },
+    { href: "#/qday", title: "Try to break in", text: "Play the attacker with the stolen old key. The network refuses you, every time.", cta: "Play the attacker" },
+  ];
+
   return (
     <>
-      <section className="split" style={{ marginBottom: 64 }}>
-        <div>
-          <h1>Get your Ethereum account out before quantum computers arrive</h1>
-          <p className="lede">
-            Most Ethereum accounts have already revealed the clue a future quantum computer needs to take them over. Lifeboat
-            checks whether yours has, then moves everything into a new account it can't break into.
-          </p>
-          <form className="field" onSubmit={check}>
-            <input
-              className="input"
-              placeholder="Paste any Ethereum address: 0x…"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              spellCheck={false}
-              autoComplete="off"
-              aria-label="Ethereum address"
-            />
-            <button className="btn primary" disabled={busy || net.state !== "ready" || !address.trim()}>
-              <Search size={16} strokeWidth={1.5} />
-              {busy ? "Checking" : "Check"}
-            </button>
-          </form>
-          <p className="meta" style={{ marginTop: 12 }}>
-            {net.state === "connecting" && "Opening a private connection through Tor, about 10 seconds. Nobody learns which address you check"}
-            {net.state === "ready" && "Private connection ready. Nobody learns which address you check"}
-            {net.state === "failed" && `The private connection could not start: ${net.reason}`}
-          </p>
-          <p className="small t2" style={{ marginTop: 16 }}>
-            No address handy? <a href="#/move">Skip straight to the demo</a>: it gives you a practice account with test money.
-          </p>
-        </div>
-        <LifeboatFigure />
-      </section>
-
-      {error && <div className="notice negative small">{error}</div>}
-
-      {result && (
-        <section className="card" aria-live="polite" style={{ marginBottom: 48 }}>
-          <span className="status">
-            <span className={`dot ${STATUS[result.status].dot}`} />
-            {STATUS[result.status].label}
-          </span>
-          <p style={{ margin: "12px 0 20px" }}>{result.why}</p>
-          <dl className="facts">
-            <dt>Address</dt>
-            <dd>{result.address}</dd>
-            <dt>Transactions sent</dt>
-            <dd>{int(result.nonce)}</dd>
-            <dt>Balance</dt>
-            <dd>{eth(result.balanceWei)} ETH</dd>
-          </dl>
-          <Details summary="How this was checked">
-            <p>
-              {result.reads} reads of Ethereum mainnet at block {int(result.block)}, sent through {NETWORKS["tor-js"].label} with
-              Anon-RPC in {result.secs.toFixed(1)}s. The data provider saw a Tor exit, not you, and can't link this check to
-              another one.
+      <section className="hero bleed" aria-label="Lifeboat">
+        <PixelHero slot={slot} calm={calm} />
+        <div className="hero-body" ref={calm}>
+          <a className="hero-chip" href="#/how">
+            Live on the EIP-8141 test network: a whole account moved in one transaction <ArrowRight size={14} strokeWidth={1.75} />
+          </a>
+          <div ref={slot} className="hero-slot" role="img" aria-label="Lifeboat" />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <h1>Move your Ethereum account to quantum-safe keys</h1>
+            <p className="sub">
+              Most accounts have already revealed what a future quantum computer needs to take them over. Lifeboat checks
+              yours, then moves everything somewhere it can't follow.
             </p>
-          </Details>
-          <hr className="rule" />
-          <p className="small" style={{ margin: 0 }}>
-            {result.status === "exposed"
-              ? "Your real account can't move yet: the new account type Lifeboat uses isn't on Ethereum mainnet. "
-              : "Nothing to do for this one today. "}
-            You can try the whole move now on a <Term t="test network" /> with a practice account, in about a minute.
-          </p>
-        </section>
-      )}
-
-      <section className="story" aria-label="The problem">
-        <div>
-          <span className="meta">Today</span>
-          <h2>Your account is locked by one key</h2>
-          <p className="t2 small">
-            The first time you send a transaction, your account reveals its public key. That's normal and, today, harmless.
-          </p>
-        </div>
-        <div>
-          <span className="meta">
-            On <Term t="Q-day" />
-          </span>
-          <h2>That public key gives the lock away</h2>
-          <p className="t2 small">
-            A large enough quantum computer can work back from the public key to the private key, and spend everything in the
-            account.
-          </p>
-        </div>
-        <div>
-          <span className="meta">With Lifeboat</span>
-          <h2>A second lock it can't pick</h2>
-          <p className="t2 small">
-            Your funds move to an account that also needs a <Term t="quantum-safe">quantum-safe</Term> signature. The stolen key
-            alone gets the attacker nothing.
-          </p>
+            <div className="ctas">
+              <button className="btn primary" onClick={toCheck}>
+                <Search size={16} strokeWidth={2} /> Check an address
+              </button>
+              <a className="btn secondary" href="#/move">
+                <Play size={14} strokeWidth={2} fill="currentColor" /> Try the demo
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section style={{ paddingTop: 32, borderTop: "1px solid var(--line)" }}>
-        <h2>What you'll do here, in about a minute</h2>
-        <p className="t2 small" style={{ margin: 0 }}>
-          Everything after this page runs on a test network with test money. Nothing real is at stake, and your keys never
-          leave this browser.
-        </p>
-        <ol className="plan">
-          {[
-            ["Check", "See whether an address has revealed its key."],
-            ["Move", "Get a practice account and move all of it into a Lifeboat account, in one free transaction."],
-            ["Use it", "Send money from the new account and watch one of its 1,024 one-time keys get used."],
-            ["Try to break in", "Play the attacker with the stolen old key. The network refuses you."],
-          ].map(([t, d], i) => (
-            <li key={t}>
-              <div className="row">
-                <StepMark n={i + 1} done={false} />
-                {t}
+      <section className="band" ref={checkRef} style={{ scrollMarginTop: 56 }}>
+        <div className="split">
+          <div>
+            <Typed className="section-h" text="Is your key already out?" />
+            <p className="t2">
+              The first time an account sends a transaction, it publishes its public key. Today that's harmless. A large
+              enough quantum computer could work back from it to the private key and spend everything.
+            </p>
+            <p className="t2" style={{ marginBottom: 28 }}>
+              Paste any Ethereum address to see whether it has. Nothing is signed and nothing is sent.
+            </p>
+            <form className="field" onSubmit={check}>
+              <input
+                className="input"
+                placeholder="0x… any Ethereum address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
+                aria-label="Ethereum address"
+              />
+              <button className="btn primary" disabled={busy || net.state !== "ready" || !address.trim()}>
+                {busy ? "Checking" : "Check"}
+              </button>
+            </form>
+            <p className="meta" style={{ marginTop: 12 }}>
+              {net.state === "connecting" && "Opening a private connection through Tor, about 10 seconds. Nobody learns which address you check"}
+              {net.state === "ready" && "Private connection ready. Nobody learns which address you check"}
+              {net.state === "failed" && `The private connection could not start: ${net.reason}`}
+            </p>
+            <p className="small t2" style={{ marginTop: 20 }}>
+              No address handy? <a href="#/move">Skip straight to the demo</a>: it gives you a practice account with test money.
+            </p>
+          </div>
+
+          <div aria-live="polite">
+            {error && <div className="notice negative small" style={{ marginBottom: 16 }}>{error}</div>}
+            {result ? (
+              <section className="card">
+                <span className="status">
+                  <span className={`dot ${STATUS[result.status].dot}`} />
+                  {STATUS[result.status].label}
+                </span>
+                <p style={{ margin: "14px 0 20px" }}>{result.why}</p>
+                <dl className="facts">
+                  <dt>Address</dt>
+                  <dd>{result.address}</dd>
+                  <dt>Transactions sent</dt>
+                  <dd>{int(result.nonce)}</dd>
+                  <dt>Balance</dt>
+                  <dd>{eth(result.balanceWei)} ETH</dd>
+                </dl>
+                <Details summary="How this was checked">
+                  <p>
+                    {result.reads} reads of Ethereum mainnet at block {int(result.block)}, sent through {NETWORKS["tor-js"].label}{" "}
+                    with Anon-RPC in {result.secs.toFixed(1)}s. The data provider saw a Tor exit, not you, and can't link this
+                    check to another one.
+                  </p>
+                </Details>
+                <hr className="rule" />
+                <p className="small" style={{ margin: "0 0 16px" }}>
+                  {result.status === "exposed"
+                    ? "Your real account can't move yet: the new account type Lifeboat uses isn't on Ethereum mainnet. "
+                    : "Nothing to do for this one today. "}
+                  You can try the whole move now on a <Term t="test network" /> with a practice account, in about a minute.
+                </p>
+                <a className="btn secondary small" href="#/move">
+                  Try the move <ArrowRight size={14} strokeWidth={1.75} />
+                </a>
+              </section>
+            ) : (
+              <div className="quote">
+                <Mark size={4} />
+                <p className="big">
+                  An account that has sent even one transaction has shown its public key. That's all a quantum computer would
+                  need.
+                </p>
+                <p className="meta" style={{ margin: 0 }}>
+                  Fresh addresses that have only received funds are still hidden. Most active wallets are not.
+                </p>
               </div>
-              <p className="t2 small">{d}</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="band alt">
+        <Typed className="section-h" text="The problem, in three steps" />
+        <p className="t2" style={{ maxWidth: "60ch", margin: 0 }}>
+          Nothing is broken today. Lifeboat is for moving before that changes, not after.
+        </p>
+        <div className="story">
+          <div>
+            <span className="meta">01 · Today</span>
+            <h2>Your account is locked by one key</h2>
+            <p className="t2 small">
+              The first time you send a transaction, your account reveals its public key. That's normal and, today, harmless.
+            </p>
+          </div>
+          <div>
+            <span className="meta">
+              02 · On <Term t="Q-day" />
+            </span>
+            <h2>That public key gives the lock away</h2>
+            <p className="t2 small">
+              A large enough quantum computer can work back from the public key to the private key, and spend everything in the
+              account.
+            </p>
+          </div>
+          <div>
+            <span className="meta">03 · With Lifeboat</span>
+            <h2>A second lock it can't pick</h2>
+            <p className="t2 small">
+              Your funds move to an account that also needs a <Term t="quantum-safe">quantum-safe</Term> signature. The stolen key
+              alone gets the attacker nothing.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="band">
+        <Typed className="section-h" text="What you'll do here, in about a minute" />
+        <p className="t2" style={{ maxWidth: "62ch", margin: 0 }}>
+          After this page, everything runs on a test network with test money. Nothing real is at stake, and your keys never leave
+          this browser.
+        </p>
+        <ol className="rows">
+          {STEPS_HOME.map((s, i) => (
+            <li key={s.title}>
+              <div>
+                <h3>
+                  <StepMark n={i + 1} done={false} />
+                  {s.title}
+                </h3>
+                <p className="t2">{s.text}</p>
+              </div>
+              <div className="act">
+                {s.go ? (
+                  <button className={`btn ${i === 0 ? "primary" : "secondary"}`} onClick={s.go}>
+                    {s.cta}
+                  </button>
+                ) : (
+                  <a className={`btn ${i === 1 ? "primary" : "secondary"}`} href={s.href}>
+                    {s.cta} <ArrowRight size={16} strokeWidth={1.75} />
+                  </a>
+                )}
+                <span className="meta">Step {i + 1} of 4</span>
+              </div>
             </li>
           ))}
         </ol>
-        <Details summary="The numbers, for developers">
-          <dl className="facts small" style={{ marginTop: 4 }}>
-            <dt>Signature</dt>
-            <dd>XMSS with WOTS+C over keccak256, 4,424 bytes</dd>
-            <dt>Verification</dt>
-            <dd>48,600 gas, fixed</dd>
-            <dt>Keys per account</dt>
-            <dd>1,024, then rotate</dd>
-            <dt>Runs on</dt>
-            <dd>EIP-8141 frame transactions, ERC-8421 alt mempool devnet</dd>
-          </dl>
-        </Details>
       </section>
 
-      <Next href="#/move" title="Move a practice account to safety">
-        Step 2 of 4. Takes about a minute, costs nothing.
-      </Next>
+      <section className="band alt">
+        <div className="split">
+          <div>
+            <Typed className="section-h" text="Under the hood" />
+            <p className="t2">
+              The account checks a hash-based signature on every transaction, using only keccak256. Moving into it is a single
+              EIP-8141 frame transaction, paid for by a sponsor that only the ERC-8421 alt mempool will accept.
+            </p>
+            <p className="t2" style={{ marginBottom: 0 }}>
+              <a href="#/how">Read how it works</a>, or <a href="https://github.com/ramavats/lifeboat">browse the source</a>.
+            </p>
+          </div>
+          <div className="card">
+            <dl className="facts small">
+              <dt>Signature</dt>
+              <dd>XMSS with WOTS+C, 4,424 bytes</dd>
+              <dt>Verification</dt>
+              <dd>48,600 gas, fixed</dd>
+              <dt>Keys per account</dt>
+              <dd>1,024, then rotate</dd>
+              <dt>The move</dt>
+              <dd>one atomic transaction, fee sponsored</dd>
+              <dt>Runs on</dt>
+              <dd>EIP-8141 + ERC-8421 test network</dd>
+            </dl>
+          </div>
+        </div>
+        <Next href="#/move" title="Move a practice account to safety">
+          Step 2 of 4. Takes about a minute, costs nothing.
+        </Next>
+      </section>
     </>
   );
 }
