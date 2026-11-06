@@ -20,12 +20,12 @@ const ROUTE: Record<NetworkId, string> = { "tor-js": "Tor", nym: "the Nym mixnet
 const BACKUP_MS = 30_000;
 const GIVE_UP_MS = 90_000;
 /**
- * A private check gets two rounds of this long. Each round reads over its own isolation key, so
- * the second goes out by a different route if the first one is stuck. Then it gives up and
+ * A private check keeps every read that answers and retries only the ones that stall, each retry
+ * over a fresh route (isolation key), up to READ_TRIES per read. After CHECK_MS it gives up and
  * offers a direct check instead.
  */
-const ROUND_MS = 30_000;
-const ROUNDS = 2;
+const READ_TRIES = 3;
+const CHECK_MS = 80_000;
 
 /**
  * One private connection per page load, warmed up before anyone types an address. The Nym mixnet
@@ -150,22 +150,29 @@ export function CheckPage() {
       let r: Exposure | undefined;
       if (!session) r = await checkExposure(new RpcClient(MAINNET_RPC), a);
       else {
-        let last: Error = new Error("no answer");
-        for (let round = 1; round <= ROUNDS && !r; round++) {
-          // The checked address is the isolation key, so checks of different addresses can't be
-          // linked. A second round adds a suffix: same address, fresh route.
-          const key = round === 1 ? a.toLowerCase() : `${a.toLowerCase()}#${round}`;
-          const rpc = new RpcClient(MAINNET_RPC, session.fetchFor(key), 1);
-          try {
-            r = await Promise.race([
-              checkExposure(rpc, a),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("no answer in time")), ROUND_MS)),
-            ]);
-          } catch (e) {
-            last = e as Error;
-          }
+        // The checked address is the isolation key, so checks of different addresses can't be
+        // linked. A read's retry adds a suffix: same address, fresh route through the network.
+        const base = a.toLowerCase();
+        const tries = new Map<number, number>();
+        const s = session;
+        const rpc = new RpcClient(
+          MAINNET_RPC,
+          (url, init) => {
+            const id = (JSON.parse(String(init.body)) as { id: number }).id;
+            const n = (tries.get(id) ?? 0) + 1;
+            tries.set(id, n);
+            return s.fetchFor(n === 1 ? base : `${base}#${n}`)(url, init);
+          },
+          READ_TRIES,
+        );
+        try {
+          r = await Promise.race([
+            checkExposure(rpc, a),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer in ${CHECK_MS / 1000} s`)), CHECK_MS)),
+          ]);
+        } catch (e) {
+          throw new Error(`the private network is too slow right now (${(e as Error).message})`);
         }
-        if (!r) throw new Error(`the private network is too slow right now (${last.message}, tried ${ROUNDS} routes)`);
       }
       setResult({ ...r, secs: (performance.now() - t0) / 1000, via });
       markChecked();
